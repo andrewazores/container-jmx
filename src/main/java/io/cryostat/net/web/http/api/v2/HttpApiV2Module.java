@@ -89,6 +89,10 @@ public abstract class HttpApiV2Module {
     @IntoSet
     abstract RequestHandler bindTargetEventsSearchGetHandler(TargetEventsSearchGetHandler handler);
 
+    @Binds
+    @IntoSet
+    abstract RequestHandler bindTargetEnvironmentGetHandler(TargetEnvironmentGetHandler handler);
+
     @Provides
     @Singleton
     @Named("OutputStreamFunction")

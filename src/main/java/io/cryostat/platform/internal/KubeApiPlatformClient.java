@@ -40,6 +40,7 @@ package io.cryostat.platform.internal;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -51,6 +52,8 @@ import io.cryostat.core.net.discovery.JvmDiscoveryClient.EventKind;
 import io.cryostat.platform.ServiceRef;
 import io.cryostat.platform.ServiceRef.AnnotationKey;
 import io.cryostat.util.URIUtil;
+import io.cryostat.net.AbstractNode.NodeType;
+import io.cryostat.net.EnvironmentNode;
 
 import dagger.Lazy;
 import io.fabric8.kubernetes.api.model.EndpointPort;
@@ -147,6 +150,28 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
         } catch (Exception e) {
             logger.warn(e);
             return Collections.emptyList();
+        }
+    }
+
+    @Override
+    public EnvironmentNode getTargetEnvironment() {
+        try {
+            Map<String, String> nsLabels = new HashMap<String,String>();
+            nsLabels.put("name", namespace);
+            EnvironmentNode nsNode = new EnvironmentNode(NodeType.NAMESPACE, nsLabels);
+            k8sClient.pods().inNamespace(namespace).list().getItems().forEach(
+                pod -> {
+                    Map<String, String> podLabels = new HashMap<String,String>();
+                    podLabels.put("name", pod.getMetadata().getName());
+                    EnvironmentNode podNode = new EnvironmentNode(NodeType.POD, podLabels);
+                    logger.warn(pod.getStatus().toString());
+                    nsNode.addChildNode(podNode);
+                }
+            );
+            return nsNode;
+        } catch (Exception e) {
+            logger.warn(e);
+            return null;
         }
     }
 

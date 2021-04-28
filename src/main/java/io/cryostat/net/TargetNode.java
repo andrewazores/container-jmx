@@ -35,71 +35,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package io.cryostat.platform.internal;
+package io.cryostat.net;
 
-import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
-import io.cryostat.core.log.Logger;
-import io.cryostat.core.net.JFRConnectionToolkit;
-import io.cryostat.core.sys.Environment;
 import io.cryostat.platform.ServiceRef;
-import io.cryostat.util.URIUtil;
-import io.cryostat.net.EnvironmentNode;
 
-import dagger.Lazy;
+public class TargetNode extends AbstractNode {
+    private ServiceRef targetRef;
 
-class KubeEnvPlatformClient extends AbstractPlatformClient {
-
-    private static final Pattern SERVICE_ENV_PATTERN =
-            Pattern.compile("([\\S]+)_PORT_([\\d]+)_TCP_ADDR");
-    private final Lazy<JFRConnectionToolkit> connectionToolkit;
-    private final Environment env;
-    private final Logger logger;
-
-    KubeEnvPlatformClient(
-            Lazy<JFRConnectionToolkit> connectionToolkit, Environment env, Logger logger) {
-        this.connectionToolkit = connectionToolkit;
-        this.env = env;
-        this.logger = logger;
-    }
-
-    @Override
-    public void start() throws IOException {}
-
-    @Override
-    public List<ServiceRef> listDiscoverableServices() {
-        return env.getEnv().entrySet().stream()
-                .map(this::envToServiceRef)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public EnvironmentNode getTargetEnvironment() {
-        return null;
-    }
-
-    private ServiceRef envToServiceRef(Map.Entry<String, String> entry) {
-        Matcher matcher = SERVICE_ENV_PATTERN.matcher(entry.getKey());
-        if (!matcher.matches()) {
-            return null;
-        }
-        String alias = matcher.group(1).toLowerCase();
-        int port = Integer.parseInt(matcher.group(2));
-        try {
-            return new ServiceRef(
-                    URIUtil.convert(
-                            connectionToolkit.get().createServiceURL(entry.getValue(), port)),
-                    alias);
-        } catch (Exception e) {
-            logger.warn(e);
-            return null;
-        }
+    public TargetNode(NodeType nodeType, Map<String, String> labels, ServiceRef targetRef) {
+        super(nodeType, labels);
+        this.targetRef = targetRef;
     }
 }

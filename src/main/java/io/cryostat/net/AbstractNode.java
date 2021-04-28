@@ -35,22 +35,27 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package io.cryostat.platform;
+package io.cryostat.net;
 
-import io.cryostat.net.EnvironmentNode;
-
-import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.function.Consumer;
+import java.util.Map;
+import java.util.Optional;
 
-public interface PlatformClient {
-    void start() throws IOException;
+public abstract class AbstractNode {
+    protected NodeType nodeType;
+    protected Map<String, String> labels;
 
-    List<ServiceRef> listDiscoverableServices();
+    protected AbstractNode(NodeType nodeType, Map<String, String> labels) {
+        this.nodeType = nodeType;
+        this.labels = labels;
+    }
 
-    void addTargetDiscoveryListener(Consumer<TargetDiscoveryEvent> listener);
-
-    void removeTargetDiscoveryListener(Consumer<TargetDiscoveryEvent> listener);
-
-    EnvironmentNode getTargetEnvironment();
+    public enum NodeType {
+        NAMESPACE,
+        DEPLOYMENT,
+        POD,
+        CONTAINER;
+    }
 }
