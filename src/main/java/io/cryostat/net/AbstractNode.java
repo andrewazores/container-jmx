@@ -56,6 +56,7 @@ public abstract class AbstractNode {
         NAMESPACE,
         DEPLOYMENT,
         POD,
-        CONTAINER;
+        CONTAINER,
+        ENDPOINT;
     }
 }

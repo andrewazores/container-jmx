@@ -58,7 +58,13 @@ import io.cryostat.net.EnvironmentNode;
 import dagger.Lazy;
 import io.fabric8.kubernetes.api.model.EndpointPort;
 import io.fabric8.kubernetes.api.model.EndpointSubset;
+import io.fabric8.kubernetes.api.model.EndpointAddress;
 import io.fabric8.kubernetes.api.model.Endpoints;
+import io.fabric8.kubernetes.api.model.Pod;
+import io.fabric8.kubernetes.api.model.ObjectReference;
+import io.fabric8.kubernetes.api.model.OwnerReference;
+import io.fabric8.kubernetes.api.model.apps.Deployment;
+import io.fabric8.kubernetes.api.model.apps.ReplicaSet;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.Watcher;
 import io.fabric8.kubernetes.client.WatcherException;
@@ -156,18 +162,84 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
     @Override
     public EnvironmentNode getTargetEnvironment() {
         try {
+            // Create root node (namespace)
             Map<String, String> nsLabels = new HashMap<String,String>();
             nsLabels.put("name", namespace);
             EnvironmentNode nsNode = new EnvironmentNode(NodeType.NAMESPACE, nsLabels);
-            k8sClient.pods().inNamespace(namespace).list().getItems().forEach(
-                pod -> {
-                    Map<String, String> podLabels = new HashMap<String,String>();
-                    podLabels.put("name", pod.getMetadata().getName());
-                    EnvironmentNode podNode = new EnvironmentNode(NodeType.POD, podLabels);
-                    logger.warn(pod.getStatus().toString());
-                    nsNode.addChildNode(podNode);
+
+            // Create nodes for each deployment
+            List<EnvironmentNode> deploymentNodes = new ArrayList<>();
+            k8sClient.apps().deployments().inNamespace(namespace).list().getItems().forEach(
+                deployment -> {
+                    Map<String, String> labels = new HashMap<String, String>();
+                    labels.put("name", deployment.getMetadata().getName());
+                    List<OwnerReference> ownerRef = deployment.getMetadata().getOwnerReferences();
+                    if (!ownerRef.isEmpty()) {
+                        labels.put("parentName", ownerRef.stream().findFirst().get().getName());
+                        labels.put("parentKind", ownerRef.stream().findFirst().get().getKind());
+                    }
+
+                    EnvironmentNode node = new EnvironmentNode(NodeType.DEPLOYMENT, labels);
+                    deploymentNodes.add(node);
                 }
             );
+
+            // Create nodes for each pod
+            List<EnvironmentNode> podNodes = new ArrayList<>();
+            k8sClient.pods().inNamespace(namespace).list().getItems().forEach(
+                pod -> {
+                    Map<String, String> labels = new HashMap<String, String>();
+                    labels.put("name", pod.getMetadata().getName());
+                    List<OwnerReference> ownerRef = pod.getMetadata().getOwnerReferences();
+                    if (!ownerRef.isEmpty()) {
+                        labels.put("parentName", ownerRef.stream().findFirst().get().getName());
+                        labels.put("parentKind", ownerRef.stream().findFirst().get().getKind());
+                    }
+
+                    EnvironmentNode node = new EnvironmentNode(NodeType.POD, labels);
+                    podNodes.add(node);
+                }
+            );
+
+            // Create nodes for each endpoint
+            k8sClient.endpoints().inNamespace(namespace).list().getItems().forEach(
+                endpoint -> {
+                    List<EndpointSubset> subsets = endpoint.getSubsets();
+                    if (subsets.isEmpty()) return;
+                    List<EndpointAddress> addresses = subsets.stream().findFirst().get().getAddresses();
+                    if (addresses.isEmpty()) return;
+                    ObjectReference objectRef = addresses.stream().findFirst().get().getTargetRef();
+                    if (objectRef == null) return;
+                    String parentName = objectRef.getName();
+                    String parentKind = objectRef.getKind();
+
+                    // Create node
+                    Map<String, String> labels = new HashMap<String, String>();
+                    labels.put("name", endpoint.getMetadata().getName());
+                    List<ServiceRef> serviceRefs = getServiceRefs(endpoint);
+                    if (serviceRefs.isEmpty()) return;
+                    TargetNode node = new TargetNode(NodeType.ENDPOINT, labels, serviceRefs.stream().findFirst().get());
+
+                    // Find parent and add as child
+                    findParent(node, parentName, parentKind, deploymentNodes, podNodes, nsNode);
+                }
+            );
+
+            // Find parent nodes of relevant pods
+            for (EnvironmentNode pod : podNodes) {
+                if (pod.hasChildren()) {
+                    findParent(pod, pod.getLabels().get("parentName"), pod.getLabels().get("parentKind"),
+                        deploymentNodes, podNodes, nsNode);
+                }
+            }
+            // Find parent nodes of relevant deployments
+            for (EnvironmentNode deployment : deploymentNodes) {
+                if (deployment.hasChildren()) {
+                    findParent(deployment, deployment.getLabels().get("parentName"),
+                        deployment.getLabels().get("parentKind"), deploymentNodes, podNodes, nsNode);
+                }
+            }
+
             return nsNode;
         } catch (Exception e) {
             logger.warn(e);
@@ -225,4 +297,41 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
     }
+
+    private void findParent(AbstractNode child, String parentName, String parentKind,
+        List<EnvironmentNode> deployments, List<EnvironmentNode> pods, EnvironmentNode root) {
+
+        switch(parentKind) {
+            case "ReplicaSet" :
+                try {
+                    ReplicaSet replica = k8sClient.apps().replicaSets().inNamespace(namespace).withName(parentName).get();
+
+                    List<OwnerReference> ownerRef = replica.getMetadata().getOwnerReferences();
+                    if (ownerRef.isEmpty()) break;
+                    parentName = ownerRef.stream().findFirst().get().getName();
+                    if (!ownerRef.stream().findFirst().get().getKind().equals("Deployment")) break;
+                } catch (Exception e) {
+                    break;
+                }
+            case "Deployment" :
+                for (EnvironmentNode deployment : deployments) {
+                    if (deployment.getLabels().get("name").equals(parentName)) {
+                        deployment.addChildNode(child);
+                        return;
+                    }
+                }
+                break;
+
+            case "Pod" :
+                for (EnvironmentNode pod : pods) {
+                    if (pod.getLabels().get("name").equals(parentName)) {
+                        pod.addChildNode(child);
+                        return;
+                    }
+                }
+                break;
+        }
+        // If no parent is found, add under namespace
+        root.addChildNode(child);
+    };
 }

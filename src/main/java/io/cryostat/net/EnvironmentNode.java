@@ -54,4 +54,12 @@ public class EnvironmentNode extends AbstractNode {
             this.children.add(child);
         }
     }
+    
+    public boolean hasChildren() {
+        return !children.isEmpty();
+    }
+
+    public Map<String, String> getLabels() {
+        return this.labels;
+    }
 }
