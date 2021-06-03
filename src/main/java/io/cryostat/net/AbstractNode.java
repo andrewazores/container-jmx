@@ -52,9 +52,20 @@ public abstract class AbstractNode {
         this.labels = labels;
     }
 
+    protected NodeType getNodeType() {
+        return this.nodeType;
+    }
+
+    protected Map<String, String> getLabels() {
+        return this.labels;
+    }
+
     public enum NodeType {
         NAMESPACE,
         DEPLOYMENT,
+        DEPLOYMENTCONFIG,
+        REPLICASET,
+        REPLICATIONCONTROLLER,
         POD,
         CONTAINER,
         ENDPOINT;

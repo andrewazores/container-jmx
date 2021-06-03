@@ -41,7 +41,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class EnvironmentNode extends AbstractNode {
+public class EnvironmentNode extends AbstractNode implements Comparable<EnvironmentNode>{
     private List<AbstractNode> children;
 
     public EnvironmentNode(NodeType nodeType, Map<String, String> labels) {
@@ -49,17 +49,48 @@ public class EnvironmentNode extends AbstractNode {
         this.children = new ArrayList();
     }
 
-    public void addChildNode(AbstractNode child) {
-        if (child != null) {
-            this.children.add(child);
+    public int compareTo(EnvironmentNode node) {
+        if (this.nodeType.ordinal() > node.getNodeType().ordinal()) return 1;
+        else if (this.nodeType.ordinal() == node.getNodeType().ordinal()) return 0;
+        else return -1;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null) return false;
+        if (this == o) return true;
+        if (o instanceof EnvironmentNode) {
+            if (((EnvironmentNode) o).getNodeType() != this.nodeType) return false;
+            String objectName = ((EnvironmentNode) o).getLabels().get("name");
+            if (!objectName.equals(this.labels.get("name"))) return false;
+            return true;
+        } else {
+            return false;
         }
     }
-    
+
+    @Override
+    public int hashCode() {
+        int code = 0;
+        String name = this.labels.get("name");
+        if (name != null) {
+            code += name.hashCode();
+        }
+        code += this.nodeType.ordinal();
+        return code;
+    }
+        
     public boolean hasChildren() {
         return !children.isEmpty();
     }
 
     public Map<String, String> getLabels() {
         return this.labels;
+    }
+
+    public void addChildNode(AbstractNode child) {
+        if (child != null) {
+            this.children.add(child);
+        }
     }
 }
