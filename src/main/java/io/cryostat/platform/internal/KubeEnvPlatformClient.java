@@ -48,9 +48,9 @@ import java.util.stream.Collectors;
 import io.cryostat.core.log.Logger;
 import io.cryostat.core.net.JFRConnectionToolkit;
 import io.cryostat.core.sys.Environment;
+import io.cryostat.net.EnvironmentNode;
 import io.cryostat.platform.ServiceRef;
 import io.cryostat.util.URIUtil;
-import io.cryostat.net.EnvironmentNode;
 
 import dagger.Lazy;
 

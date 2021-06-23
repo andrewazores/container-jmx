@@ -37,11 +37,11 @@
  */
 package io.cryostat.platform;
 
-import io.cryostat.net.EnvironmentNode;
-
 import java.io.IOException;
 import java.util.List;
 import java.util.function.Consumer;
+
+import io.cryostat.net.EnvironmentNode;
 
 public interface PlatformClient {
     void start() throws IOException;

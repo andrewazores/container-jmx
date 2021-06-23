@@ -41,7 +41,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class EnvironmentNode extends AbstractNode implements Comparable<EnvironmentNode>{
+public class EnvironmentNode extends AbstractNode implements Comparable<EnvironmentNode> {
     private List<AbstractNode> children;
 
     public EnvironmentNode(NodeType nodeType, Map<String, String> labels) {
@@ -79,7 +79,7 @@ public class EnvironmentNode extends AbstractNode implements Comparable<Environm
         code += this.nodeType.ordinal();
         return code;
     }
-        
+
     public boolean hasChildren() {
         return !children.isEmpty();
     }

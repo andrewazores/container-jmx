@@ -39,17 +39,16 @@ package io.cryostat.net.web.http.api.v2;
 
 import javax.inject.Inject;
 
-import com.google.gson.Gson;
-
 import io.cryostat.net.AuthManager;
 import io.cryostat.net.EnvironmentNode;
-import io.cryostat.platform.PlatformClient;
 import io.cryostat.net.web.http.HttpMimeType;
 import io.cryostat.net.web.http.api.ApiVersion;
+import io.cryostat.platform.PlatformClient;
+
+import com.google.gson.Gson;
 import io.vertx.core.http.HttpMethod;
 
-class TargetEnvironmentGetHandler
-        extends AbstractV2RequestHandler<EnvironmentNode> {
+class TargetEnvironmentGetHandler extends AbstractV2RequestHandler<EnvironmentNode> {
 
     private final PlatformClient platformClient;
 
@@ -90,9 +89,8 @@ class TargetEnvironmentGetHandler
     }
 
     @Override
-    public IntermediateResponse<EnvironmentNode> handle(RequestParameters params)
-            throws Exception {
-        return new IntermediateResponse<EnvironmentNode>().body(platformClient.getTargetEnvironment());
-            }
-
+    public IntermediateResponse<EnvironmentNode> handle(RequestParameters params) throws Exception {
+        return new IntermediateResponse<EnvironmentNode>()
+                .body(platformClient.getTargetEnvironment());
     }
+}
