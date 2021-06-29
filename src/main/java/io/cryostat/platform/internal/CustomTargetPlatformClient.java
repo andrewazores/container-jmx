@@ -142,7 +142,7 @@ public class CustomTargetPlatformClient extends AbstractPlatformClient {
                 sr ->
                         customTargetsNode.addChildNode(
                                 new TargetNode(
-                                        NodeType.ENDPOINT,
+                                        NodeType.CONTAINER,
                                         Map.of(
                                                 "name",
                                                 sr.getAlias()
