@@ -45,10 +45,10 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 public class TargetNode extends AbstractNode {
     @SuppressFBWarnings("URF_UNREAD_FIELD")
-    private ServiceRef targetRef;
+    private ServiceRef target;
 
-    public TargetNode(NodeType nodeType, Map<String, String> labels, ServiceRef targetRef) {
+    public TargetNode(NodeType nodeType, Map<String, String> labels, ServiceRef target) {
         super(nodeType, labels);
-        this.targetRef = targetRef;
+        this.target = target;
     }
 }
