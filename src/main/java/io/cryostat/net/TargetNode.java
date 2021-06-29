@@ -39,8 +39,9 @@ package io.cryostat.net;
 
 import java.util.Map;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.cryostat.platform.ServiceRef;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 public class TargetNode extends AbstractNode {
     @SuppressFBWarnings("URF_UNREAD_FIELD")
