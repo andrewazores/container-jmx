@@ -119,7 +119,7 @@ class DefaultPlatformClient extends AbstractPlatformClient implements Consumer<J
     @Override
     public EnvironmentNode getTargetEnvironment() {
         Map<String, String> rootLabels = new HashMap<String, String>();
-        rootLabels.put("name", "root");
+        rootLabels.put("name", "JDP");
         EnvironmentNode root = new EnvironmentNode(NodeType.NAMESPACE, rootLabels);
         List<ServiceRef> targets = listDiscoverableServices();
         for (ServiceRef target : targets) {
