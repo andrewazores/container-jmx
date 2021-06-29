@@ -44,6 +44,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -53,6 +54,9 @@ import javax.inject.Named;
 import io.cryostat.MainModule;
 import io.cryostat.core.net.discovery.JvmDiscoveryClient.EventKind;
 import io.cryostat.core.sys.FileSystem;
+import io.cryostat.net.AbstractNode.NodeType;
+import io.cryostat.net.EnvironmentNode;
+import io.cryostat.net.TargetNode;
 import io.cryostat.platform.ServiceRef;
 
 import com.google.gson.Gson;
@@ -128,5 +132,22 @@ public class CustomTargetPlatformClient extends AbstractPlatformClient {
     @Override
     public List<ServiceRef> listDiscoverableServices() {
         return new ArrayList<>(targets);
+    }
+
+    @Override
+    public EnvironmentNode getTargetEnvironment() {
+        EnvironmentNode customTargetsNode =
+                new EnvironmentNode(NodeType.NAMESPACE, Map.of("name", "Custom Targets"));
+        targets.forEach(
+                sr ->
+                        customTargetsNode.addChildNode(
+                                new TargetNode(
+                                        NodeType.ENDPOINT,
+                                        Map.of(
+                                                "name",
+                                                sr.getAlias()
+                                                        .orElse(sr.getServiceUri().toString())),
+                                        sr)));
+        return customTargetsNode;
     }
 }

@@ -46,7 +46,7 @@ public class EnvironmentNode extends AbstractNode implements Comparable<Environm
 
     public EnvironmentNode(NodeType nodeType, Map<String, String> labels) {
         super(nodeType, labels);
-        this.children = new ArrayList();
+        this.children = new ArrayList<>();
     }
 
     public int compareTo(EnvironmentNode node) {

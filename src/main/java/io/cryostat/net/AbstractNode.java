@@ -57,7 +57,10 @@ public abstract class AbstractNode {
         return this.labels;
     }
 
+    // FIXME this is Kubernetes-specific, but the type should be an interface that various
+    // platform-specific types can implement
     public enum NodeType {
+        UNIVERSE(""), // represents the entire deployment scenario Cryostat finds itself in
         NAMESPACE("Namespace"),
         DEPLOYMENT("Deployment"),
         DEPLOYMENTCONFIG("DeploymentConfig"),
