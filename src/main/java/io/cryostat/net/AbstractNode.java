@@ -38,6 +38,7 @@
 package io.cryostat.net;
 
 import java.util.Map;
+import java.util.Objects;
 
 public abstract class AbstractNode {
     protected NodeType nodeType;
@@ -57,13 +58,32 @@ public abstract class AbstractNode {
     }
 
     public enum NodeType {
-        NAMESPACE,
-        DEPLOYMENT,
-        DEPLOYMENTCONFIG,
-        REPLICASET,
-        REPLICATIONCONTROLLER,
-        POD,
-        CONTAINER,
-        ENDPOINT;
+        NAMESPACE("Namespace"),
+        DEPLOYMENT("Deployment"),
+        DEPLOYMENTCONFIG("DeploymentConfig"),
+        REPLICASET("ReplicaSet"),
+        REPLICATIONCONTROLLER("ReplicationController"),
+        POD("Pod"),
+        CONTAINER("Container"),
+        ENDPOINT("Endpoint");
+
+        private final String kubernetesKind;
+
+        NodeType(String kubernetesKind) {
+            this.kubernetesKind = kubernetesKind;
+        }
+
+        public String getKind() {
+            return kubernetesKind;
+        }
+
+        public static NodeType fromKubernetesKind(String kubernetesKind) {
+            for (NodeType nt : values()) {
+                if (Objects.equals(nt.getKind(), kubernetesKind)) {
+                    return nt;
+                }
+            }
+            return null;
+        }
     }
 }

@@ -49,16 +49,17 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
+import dagger.Lazy;
 import io.cryostat.core.log.Logger;
 import io.cryostat.core.net.JFRConnectionToolkit;
 import io.cryostat.core.net.discovery.JvmDiscoveryClient.EventKind;
+import io.cryostat.net.AbstractNode;
 import io.cryostat.net.AbstractNode.NodeType;
 import io.cryostat.net.EnvironmentNode;
+import io.cryostat.net.TargetNode;
 import io.cryostat.platform.ServiceRef;
 import io.cryostat.platform.ServiceRef.AnnotationKey;
 import io.cryostat.util.URIUtil;
-
-import dagger.Lazy;
 import io.fabric8.kubernetes.api.model.EndpointAddress;
 import io.fabric8.kubernetes.api.model.EndpointPort;
 import io.fabric8.kubernetes.api.model.EndpointSubset;
@@ -379,24 +380,7 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
                 return true;
             }
         }
-        // If parent doesn't exist, create one
-        // Bad implementation, has to be a way to set a string value for each enum that can directly
-        // be compared to parentKind
-        NodeType type;
-        switch (parentKind) {
-            case "Pod":
-                type = NodeType.POD;
-            case "ReplicaSet":
-                type = NodeType.REPLICASET;
-            case "ReplicationController":
-                type = NodeType.REPLICATIONCONTROLLER;
-            case "Deployment":
-                type = NodeType.DEPLOYMENT;
-            case "DeploymentConfig":
-                type = NodeType.DEPLOYMENTCONFIG;
-            default:
-                type = null;
-        }
+        NodeType type = NodeType.fromKubernetesKind(parentKind);
         Map<String, String> labels = new HashMap<String, String>();
         labels.put("name", parentName);
         EnvironmentNode parent = new EnvironmentNode(type, labels);
