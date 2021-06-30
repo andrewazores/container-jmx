@@ -37,8 +37,10 @@
  */
 package io.cryostat.net;
 
+import java.util.EnumSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 public abstract class AbstractNode {
     protected NodeType nodeType;
@@ -60,24 +62,34 @@ public abstract class AbstractNode {
     // FIXME this is Kubernetes-specific, but the type should be an interface that various
     // platform-specific types can implement
     public enum NodeType {
-        UNIVERSE(""), // represents the entire deployment scenario Cryostat finds itself in
-        NAMESPACE("Namespace"),
-        DEPLOYMENT("Deployment"),
-        DEPLOYMENTCONFIG("DeploymentConfig"),
-        REPLICASET("ReplicaSet"),
-        REPLICATIONCONTROLLER("ReplicationController"),
-        POD("Pod"),
-        CONTAINER("Container"),
-        ENDPOINT("Endpoint");
+        UNIVERSE("", EnumSet.noneOf(NodeType.class)), // represents the entire deployment scenario Cryostat finds itself in
+        NAMESPACE("Namespace", UNIVERSE),
+        DEPLOYMENT("Deployment", NAMESPACE),
+        DEPLOYMENTCONFIG("DeploymentConfig", DEPLOYMENT),
+        REPLICASET("ReplicaSet", DEPLOYMENT),
+        REPLICATIONCONTROLLER("ReplicationController", NAMESPACE),
+        POD("Pod", EnumSet.of(REPLICASET, REPLICATIONCONTROLLER)),
+        CONTAINER("Container", POD),
+        ENDPOINT("Endpoint", POD);
 
         private final String kubernetesKind;
+        private final Set<NodeType> parentTypes;
 
-        NodeType(String kubernetesKind) {
+        NodeType(String kubernetesKind, NodeType parentType) {
+            this(kubernetesKind, EnumSet.of(parentType));
+        }
+
+        NodeType(String kubernetesKind, Set<NodeType> parentTypes) {
             this.kubernetesKind = kubernetesKind;
+            this.parentTypes = parentTypes;
         }
 
         public String getKind() {
             return kubernetesKind;
+        }
+
+        public Set<NodeType> getParentTypes() {
+            return parentTypes;
         }
 
         public static NodeType fromKubernetesKind(String kubernetesKind) {

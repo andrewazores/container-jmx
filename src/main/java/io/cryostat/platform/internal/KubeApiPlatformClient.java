@@ -39,8 +39,8 @@ package io.cryostat.platform.internal;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -164,15 +164,15 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
     @Override
     public EnvironmentNode getTargetEnvironment() {
         try {
-            Map<String, Set<EnvironmentNode>> tempNodes = new HashMap<>();
-            List<String> nodeTypes =
-                    Arrays.asList(
-                            "Pod",
-                            "ReplicaSet",
-                            "ReplicationController",
-                            "Deployment",
-                            "DeploymentConfig");
-            for (String type : nodeTypes) {
+            Map<NodeType, Set<EnvironmentNode>> tempNodes = new HashMap<>();
+            Set<NodeType> nodeTypes =
+                    EnumSet.of(
+                            NodeType.POD,
+                            NodeType.REPLICASET,
+                            NodeType.REPLICATIONCONTROLLER,
+                            NodeType.DEPLOYMENT,
+                            NodeType.DEPLOYMENTCONFIG);
+            for (NodeType type : nodeTypes) {
                 tempNodes.put(type, new TreeSet<>());
             }
 
@@ -213,14 +213,16 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
                                     if (objectRef == null) continue;
 
                                     String parentName = objectRef.getName();
-                                    String parentKind = objectRef.getKind();
-                                    if (parentKind != "Pod") continue;
+                                    NodeType parentKind =
+                                            NodeType.fromKubernetesKind(objectRef.getKind());
+                                    if (!parentKind.getParentTypes().contains(NodeType.POD)) {
+                                        continue;
+                                    }
 
                                     if (createParent(
                                             parentName, parentKind, node, tempNodes, nodeTypes)) {
                                         foundParent = true;
                                     }
-                                    ;
                                 }
                                 if (!foundParent) {
                                     nsNode.addChildNode(node);
@@ -237,7 +239,7 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
                             pod -> {
                                 String podName = pod.getMetadata().getName();
                                 // Check if its in tempNodes
-                                for (EnvironmentNode node : tempNodes.get("Pod")) {
+                                for (EnvironmentNode node : tempNodes.get(NodeType.POD)) {
                                     if (node.getLabels().get("name").equals(podName)) {
                                         List<OwnerReference> ownerRefs =
                                                 pod.getMetadata().getOwnerReferences();
@@ -247,8 +249,12 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
                                         }
                                         String parentName =
                                                 ownerRefs.stream().findFirst().get().getName();
-                                        String parentKind =
-                                                ownerRefs.stream().findFirst().get().getKind();
+                                        NodeType parentKind =
+                                                NodeType.fromKubernetesKind(
+                                                        ownerRefs.stream()
+                                                                .findFirst()
+                                                                .get()
+                                                                .getKind());
 
                                         if (!createParent(
                                                 parentName,
@@ -273,7 +279,7 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
                             rs -> {
                                 String rsName = rs.getMetadata().getName();
                                 // Check if its in tempNodes
-                                for (EnvironmentNode node : tempNodes.get("ReplicaSet")) {
+                                for (EnvironmentNode node : tempNodes.get(NodeType.REPLICASET)) {
                                     if (node.getLabels().get("name").equals(rsName)) {
                                         List<OwnerReference> ownerRefs =
                                                 rs.getMetadata().getOwnerReferences();
@@ -283,8 +289,12 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
                                         }
                                         String parentName =
                                                 ownerRefs.stream().findFirst().get().getName();
-                                        String parentKind =
-                                                ownerRefs.stream().findFirst().get().getKind();
+                                        NodeType parentKind =
+                                                NodeType.fromKubernetesKind(
+                                                        ownerRefs.stream()
+                                                                .findFirst()
+                                                                .get()
+                                                                .getKind());
 
                                         if (!createParent(
                                                 parentName,
@@ -299,7 +309,7 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
                             });
 
             // Add deployment nodes to root (namespace)
-            for (EnvironmentNode node : tempNodes.get("Deployment")) {
+            for (EnvironmentNode node : tempNodes.get(NodeType.DEPLOYMENT)) {
                 nsNode.addChildNode(node);
             }
 
@@ -365,10 +375,10 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
 
     private boolean createParent(
             String parentName,
-            String parentKind,
+            NodeType parentKind,
             AbstractNode child,
-            Map<String, Set<EnvironmentNode>> tempNodes,
-            List<String> nodeTypes) {
+            Map<NodeType, Set<EnvironmentNode>> tempNodes,
+            Set<NodeType> nodeTypes) {
 
         if (!nodeTypes.contains(parentKind)) {
             return false;
@@ -381,10 +391,9 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
                 return true;
             }
         }
-        NodeType type = NodeType.fromKubernetesKind(parentKind);
         Map<String, String> labels = new HashMap<String, String>();
         labels.put("name", parentName);
-        EnvironmentNode parent = new EnvironmentNode(type, labels);
+        EnvironmentNode parent = new EnvironmentNode(parentKind, labels);
         tempNodes.get(parentKind).add(parent);
         return true;
     }
