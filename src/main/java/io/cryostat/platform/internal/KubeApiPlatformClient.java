@@ -234,8 +234,8 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
         try {
             refs = childType.getGetterFunction().apply(k8sClient).apply(namespace);
         } catch (KubernetesClientException kce) {
-            logger.warn(kce);
-            refs = List.of();
+            logger.error(kce);
+            return null;
         }
         HasMetadata childRef =
                 refs.stream()
