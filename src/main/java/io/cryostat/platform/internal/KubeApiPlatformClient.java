@@ -193,6 +193,9 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
             EnvironmentNode nsNode, Endpoints endpoint, EndpointAddress addr) {
         ObjectReference target = addr.getTargetRef();
         if (target == null) {
+            logger.error("Address {} for Endpoint {} had null target reference",
+                    addr.getIp() != null ? addr.getIp() : addr.getHostname(),
+                    endpoint.getMetadata().getName());
             return;
         }
         String targetKind = target.getKind();
