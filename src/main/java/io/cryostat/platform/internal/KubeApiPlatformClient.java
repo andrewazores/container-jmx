@@ -40,6 +40,7 @@ package io.cryostat.platform.internal;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -249,7 +250,13 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
                     childKind);
             return null;
         }
-        OwnerReference owner = childRef.getMetadata().getOwnerReferences().get(0);
+        List<OwnerReference> owners = childRef.getMetadata().getOwnerReferences();
+        // Take first "expected" owner Kind from NodeTypes, or if none, simply use the first owner
+        OwnerReference owner =
+                owners.stream()
+                        .filter(o -> NodeType.fromKubernetesKind(o.getKind()) != null)
+                        .findFirst()
+                        .orElse(owners.get(0));
         String ownerKind = owner.getKind();
         String ownerName = owner.getName();
         NodeType ownerType = NodeType.fromKubernetesKind(ownerKind);
