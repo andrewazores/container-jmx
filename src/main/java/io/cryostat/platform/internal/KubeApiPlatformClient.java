@@ -229,6 +229,8 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
         }
     }
 
+    // TODO this should return an existing owner node if there already is one in the tree, rather
+    // than creating a duplicate
     private EnvironmentNode createOwnerNode(EnvironmentNode child) {
         List<? extends HasMetadata> refs;
         try {
