@@ -40,7 +40,6 @@ package io.cryostat.platform.internal;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -227,27 +226,23 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
     }
 
     private EnvironmentNode createOwnerNode(EnvironmentNode child) {
-        String childKind = child.getNodeType().getKind();
-        String childName = child.getName();
-        NodeType childType = NodeType.fromKubernetesKind(childKind);
-
         List<? extends HasMetadata> refs;
         try {
-            refs = childType.getGetterFunction().apply(k8sClient).apply(namespace);
+            refs = child.getNodeType().getGetterFunction().apply(k8sClient).apply(namespace);
         } catch (KubernetesClientException kce) {
             logger.error(kce);
             return null;
         }
         HasMetadata childRef =
                 refs.stream()
-                        .filter(o -> Objects.equals(o.getMetadata().getName(), childName))
+                        .filter(o -> Objects.equals(o.getMetadata().getName(), child.getName()))
                         .findFirst()
                         .orElse(null);
         if (childRef == null) {
             logger.error(
-                    "Could not locate node named {} of type {} while traversing environment",
-                    childName,
-                    childKind);
+                    "Could not locate node named {} of kind {} while traversing environment",
+                    child.getName(),
+                    child.getNodeType());
             return null;
         }
         List<OwnerReference> owners = childRef.getMetadata().getOwnerReferences();
