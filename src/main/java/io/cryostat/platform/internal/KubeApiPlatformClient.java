@@ -44,7 +44,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import dagger.Lazy;
 import io.cryostat.core.log.Logger;
 import io.cryostat.core.net.JFRConnectionToolkit;
 import io.cryostat.core.net.discovery.JvmDiscoveryClient.EventKind;
@@ -54,6 +53,8 @@ import io.cryostat.net.TargetNode;
 import io.cryostat.platform.ServiceRef;
 import io.cryostat.platform.ServiceRef.AnnotationKey;
 import io.cryostat.util.URIUtil;
+
+import dagger.Lazy;
 import io.fabric8.kubernetes.api.model.EndpointAddress;
 import io.fabric8.kubernetes.api.model.EndpointPort;
 import io.fabric8.kubernetes.api.model.EndpointSubset;
@@ -236,7 +237,12 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
                     refs = k8sClient.apps().replicaSets().inNamespace(namespace).list().getItems();
                     break;
                 case REPLICATIONCONTROLLER:
-                    refs = k8sClient.replicationControllers().inNamespace(namespace).list().getItems();
+                    refs =
+                            k8sClient
+                                    .replicationControllers()
+                                    .inNamespace(namespace)
+                                    .list()
+                                    .getItems();
                     break;
                 case SERVICE:
                     refs = k8sClient.services().inNamespace(namespace).list().getItems();
