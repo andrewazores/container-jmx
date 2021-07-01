@@ -73,6 +73,9 @@ public abstract class AbstractNode {
     public enum NodeType {
         UNIVERSE(""), // represents the entire deployment scenario Cryostat finds itself in
         NAMESPACE("Namespace"),
+        STATEFULSET(
+                "StatefulSet", c -> n -> c.apps().statefulSets().inNamespace(n).list().getItems()),
+        DAEMONSET("DaemonSet", c -> n -> c.apps().daemonSets().inNamespace(n).list().getItems()),
         DEPLOYMENT("Deployment", c -> n -> c.apps().deployments().inNamespace(n).list().getItems()),
         DEPLOYMENTCONFIG("DeploymentConfig"),
         REPLICASET("ReplicaSet", c -> n -> c.apps().replicaSets().inNamespace(n).list().getItems()),
@@ -80,6 +83,7 @@ public abstract class AbstractNode {
                 "ReplicationController",
                 c -> n -> c.replicationControllers().inNamespace(n).list().getItems()),
         SERVICE("Service", c -> n -> c.services().inNamespace(n).list().getItems()),
+        INGRESS("Ingress", c -> n -> c.network().ingress().inNamespace(n).list().getItems()),
         ROUTE("Route"),
         POD("Pod", c -> n -> c.pods().inNamespace(n).list().getItems()),
         CONTAINER("Container"),
