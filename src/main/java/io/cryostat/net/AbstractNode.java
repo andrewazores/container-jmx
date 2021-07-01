@@ -42,15 +42,16 @@ import java.util.Map;
 import java.util.function.Function;
 
 import com.google.gson.annotations.SerializedName;
-
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.client.KubernetesClient;
 
 public abstract class AbstractNode {
 
     protected final String name;
+
     @SerializedName("kind")
     protected final NodeType nodeType;
+
     protected final Map<String, String> labels;
 
     protected AbstractNode(String name, NodeType nodeType, Map<String, String> labels) {
