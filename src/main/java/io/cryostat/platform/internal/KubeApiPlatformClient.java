@@ -40,19 +40,13 @@ package io.cryostat.platform.internal;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
-import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import io.cryostat.core.log.Logger;
 import io.cryostat.core.net.JFRConnectionToolkit;
 import io.cryostat.core.net.discovery.JvmDiscoveryClient.EventKind;
-import io.cryostat.net.AbstractNode;
 import io.cryostat.net.AbstractNode.NodeType;
 import io.cryostat.net.EnvironmentNode;
 import io.cryostat.net.TargetNode;
@@ -65,6 +59,7 @@ import io.fabric8.kubernetes.api.model.EndpointAddress;
 import io.fabric8.kubernetes.api.model.EndpointPort;
 import io.fabric8.kubernetes.api.model.EndpointSubset;
 import io.fabric8.kubernetes.api.model.Endpoints;
+import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.ObjectReference;
 import io.fabric8.kubernetes.api.model.OwnerReference;
 import io.fabric8.kubernetes.client.KubernetesClient;
@@ -164,24 +159,7 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
     @Override
     public EnvironmentNode getTargetEnvironment() {
         try {
-            Map<NodeType, Set<EnvironmentNode>> tempNodes = new HashMap<>();
-            Set<NodeType> nodeTypes =
-                    EnumSet.of(
-                            NodeType.POD,
-                            NodeType.REPLICASET,
-                            NodeType.REPLICATIONCONTROLLER,
-                            NodeType.DEPLOYMENT,
-                            NodeType.DEPLOYMENTCONFIG);
-            for (NodeType type : nodeTypes) {
-                tempNodes.put(type, new TreeSet<>());
-            }
-
-            // Create root node (namespace)
-            Map<String, String> nsLabels = new HashMap<String, String>();
-            nsLabels.put("name", namespace);
-            EnvironmentNode nsNode = new EnvironmentNode(NodeType.NAMESPACE, nsLabels);
-
-            // For each endpoint, create parent node(s) in tempNodes
+            EnvironmentNode nsNode = new EnvironmentNode(namespace, NodeType.NAMESPACE);
             k8sClient
                     .endpoints()
                     .inNamespace(namespace)
@@ -189,137 +167,106 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
                     .getItems()
                     .forEach(
                             endpoint -> {
-                                List<EndpointSubset> subsets = endpoint.getSubsets();
-                                if (subsets.isEmpty()) return;
-                                // Maybe should loop through subsets as well
-                                List<EndpointAddress> addresses =
-                                        subsets.stream().findFirst().get().getAddresses();
-                                if (addresses.isEmpty()) return;
-
-                                // Create node
-                                Map<String, String> labels = new HashMap<String, String>();
-                                labels.put("name", endpoint.getMetadata().getName());
-                                List<ServiceRef> serviceRefs = getServiceRefs(endpoint);
-                                if (serviceRefs.isEmpty()) return;
-                                TargetNode node =
-                                        new TargetNode(
-                                                NodeType.ENDPOINT,
-                                                labels,
-                                                serviceRefs.stream().findFirst().get());
-
-                                boolean foundParent = false;
-                                for (EndpointAddress address : addresses) {
-                                    ObjectReference objectRef = address.getTargetRef();
-                                    if (objectRef == null) continue;
-
-                                    String parentName = objectRef.getName();
-                                    NodeType parentKind =
-                                            NodeType.fromKubernetesKind(objectRef.getKind());
-                                    if (!parentKind.getParentTypes().contains(NodeType.POD)) {
-                                        continue;
-                                    }
-
-                                    if (createParent(
-                                            parentName, parentKind, node, tempNodes, nodeTypes)) {
-                                        foundParent = true;
-                                    }
-                                }
-                                if (!foundParent) {
-                                    nsNode.addChildNode(node);
-                                }
+                                endpoint.getSubsets().stream()
+                                        .filter(this::isCompatibleSubset)
+                                        .forEach(
+                                                subset -> {
+                                                    subset.getAddresses()
+                                                            .forEach(
+                                                                    addr -> {
+                                                                        buildSubsetOwnerChain(
+                                                                                nsNode, endpoint,
+                                                                                addr);
+                                                                    });
+                                                });
                             });
-
-            // Get list of pods, find ownerRef of the relevant ones
-            k8sClient
-                    .pods()
-                    .inNamespace(namespace)
-                    .list()
-                    .getItems()
-                    .forEach(
-                            pod -> {
-                                String podName = pod.getMetadata().getName();
-                                // Check if its in tempNodes
-                                for (EnvironmentNode node : tempNodes.get(NodeType.POD)) {
-                                    if (node.getLabels().get("name").equals(podName)) {
-                                        List<OwnerReference> ownerRefs =
-                                                pod.getMetadata().getOwnerReferences();
-                                        if (ownerRefs.isEmpty()) {
-                                            nsNode.addChildNode(node);
-                                            continue;
-                                        }
-                                        String parentName =
-                                                ownerRefs.stream().findFirst().get().getName();
-                                        NodeType parentKind =
-                                                NodeType.fromKubernetesKind(
-                                                        ownerRefs.stream()
-                                                                .findFirst()
-                                                                .get()
-                                                                .getKind());
-
-                                        if (!createParent(
-                                                parentName,
-                                                parentKind,
-                                                node,
-                                                tempNodes,
-                                                nodeTypes)) {
-                                            nsNode.addChildNode(node);
-                                        }
-                                    }
-                                }
-                            });
-
-            // Get list of ReplicaSets, find onwerRef of the relevant ones
-            k8sClient
-                    .apps()
-                    .replicaSets()
-                    .inNamespace(namespace)
-                    .list()
-                    .getItems()
-                    .forEach(
-                            rs -> {
-                                String rsName = rs.getMetadata().getName();
-                                // Check if its in tempNodes
-                                for (EnvironmentNode node : tempNodes.get(NodeType.REPLICASET)) {
-                                    if (node.getLabels().get("name").equals(rsName)) {
-                                        List<OwnerReference> ownerRefs =
-                                                rs.getMetadata().getOwnerReferences();
-                                        if (ownerRefs.isEmpty()) {
-                                            nsNode.addChildNode(node);
-                                            continue;
-                                        }
-                                        String parentName =
-                                                ownerRefs.stream().findFirst().get().getName();
-                                        NodeType parentKind =
-                                                NodeType.fromKubernetesKind(
-                                                        ownerRefs.stream()
-                                                                .findFirst()
-                                                                .get()
-                                                                .getKind());
-
-                                        if (!createParent(
-                                                parentName,
-                                                parentKind,
-                                                node,
-                                                tempNodes,
-                                                nodeTypes)) {
-                                            nsNode.addChildNode(node);
-                                        }
-                                    }
-                                }
-                            });
-
-            // Add deployment nodes to root (namespace)
-            for (EnvironmentNode node : tempNodes.get(NodeType.DEPLOYMENT)) {
-                nsNode.addChildNode(node);
-            }
-
-            // NEED TO ADD SIMILAR CODE FOR REPLICATIONCONTROLLERS AND DEPLOYMENTCONFIGS
 
             return nsNode;
         } catch (Exception e) {
             logger.warn(e);
             return null;
         }
+    }
+
+    private void buildSubsetOwnerChain(
+            EnvironmentNode nsNode, Endpoints endpoint, EndpointAddress addr) {
+        ObjectReference target = addr.getTargetRef();
+        if (target == null) {
+            return;
+        }
+        String targetKind = target.getKind();
+        String targetName = target.getName();
+        NodeType targetType = NodeType.fromKubernetesKind(targetKind);
+        if (targetType == NodeType.POD) {
+            EnvironmentNode pod = new EnvironmentNode(targetName, NodeType.POD);
+            getServiceRefs(endpoint).stream()
+                    .map(serviceRef -> new TargetNode(NodeType.ENDPOINT, serviceRef))
+                    .forEach(pod::addChildNode);
+
+            EnvironmentNode node = pod;
+            while (true) {
+                EnvironmentNode owner = createOwnerNode(node);
+                if (owner == null) {
+                    break;
+                }
+                owner.addChildNode(node);
+                node = owner;
+            }
+            nsNode.addChildNode(node);
+        } else {
+            getServiceRefs(endpoint).stream()
+                    .map(serviceRef -> new TargetNode(NodeType.ENDPOINT, serviceRef))
+                    .forEach(nsNode::addChildNode);
+        }
+    }
+
+    private EnvironmentNode createOwnerNode(EnvironmentNode child) {
+        String childKind = child.getNodeType().getKind();
+        String childName = child.getName();
+        NodeType childType = NodeType.fromKubernetesKind(childKind);
+
+        // TODO extract this into NodeType
+        List<? extends HasMetadata> refs;
+        switch (childType) {
+            case DEPLOYMENT:
+                refs = k8sClient.apps().deployments().inNamespace(namespace).list().getItems();
+                break;
+            case REPLICASET:
+                refs = k8sClient.apps().replicaSets().inNamespace(namespace).list().getItems();
+                break;
+            case REPLICATIONCONTROLLER:
+                refs = k8sClient.replicationControllers().inNamespace(namespace).list().getItems();
+                break;
+            case SERVICE:
+                refs = k8sClient.services().inNamespace(namespace).list().getItems();
+                break;
+            case POD:
+                refs = k8sClient.pods().inNamespace(namespace).list().getItems();
+                break;
+            default:
+                refs = List.of();
+                break;
+        }
+        HasMetadata childRef =
+                refs.stream()
+                        .filter(o -> Objects.equals(o.getMetadata().getName(), childName))
+                        .findFirst()
+                        .orElse(null);
+        if (childRef == null) {
+            return null; // throw?
+        }
+        OwnerReference owner = childRef.getMetadata().getOwnerReferences().get(0);
+        String ownerKind = owner.getKind();
+        String ownerName = owner.getName();
+        NodeType ownerType = NodeType.fromKubernetesKind(ownerKind);
+        if (ownerType == null) {
+            return null;
+        }
+        return new EnvironmentNode(ownerName, ownerType);
+    }
+
+    private boolean isCompatibleSubset(EndpointSubset subset) {
+        return subset.getPorts().stream().anyMatch(this::isCompatiblePort);
     }
 
     private boolean isCompatiblePort(EndpointPort port) {
@@ -371,30 +318,5 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
                         })
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
-    }
-
-    private boolean createParent(
-            String parentName,
-            NodeType parentKind,
-            AbstractNode child,
-            Map<NodeType, Set<EnvironmentNode>> tempNodes,
-            Set<NodeType> nodeTypes) {
-
-        if (!nodeTypes.contains(parentKind)) {
-            return false;
-        }
-        Set<EnvironmentNode> nodeList = tempNodes.get(parentKind);
-        for (EnvironmentNode node : nodeList) {
-            if (node.getLabels().get("name").equals(parentName)) {
-                // only add child
-                node.addChildNode(child);
-                return true;
-            }
-        }
-        Map<String, String> labels = new HashMap<String, String>();
-        labels.put("name", parentName);
-        EnvironmentNode parent = new EnvironmentNode(parentKind, labels);
-        tempNodes.get(parentKind).add(parent);
-        return true;
     }
 }

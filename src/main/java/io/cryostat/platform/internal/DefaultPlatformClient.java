@@ -41,10 +41,7 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -118,18 +115,10 @@ class DefaultPlatformClient extends AbstractPlatformClient implements Consumer<J
 
     @Override
     public EnvironmentNode getTargetEnvironment() {
-        Map<String, String> rootLabels = new HashMap<String, String>();
-        rootLabels.put("name", "JDP");
-        EnvironmentNode root = new EnvironmentNode(NodeType.NAMESPACE, rootLabels);
+        EnvironmentNode root = new EnvironmentNode("JDP", NodeType.NAMESPACE);
         List<ServiceRef> targets = listDiscoverableServices();
         for (ServiceRef target : targets) {
-            Map<String, String> targetLabels = new HashMap<String, String>();
-            Optional<String> alias = target.getAlias();
-            if (alias.isPresent()) {
-                targetLabels.put("name", alias.get());
-            }
-            TargetNode targetNode =
-                    new TargetNode(AbstractNode.NodeType.CONTAINER, targetLabels, target);
+            TargetNode targetNode = new TargetNode(AbstractNode.NodeType.CONTAINER, target);
             root.addChildNode(targetNode);
         }
         return root;

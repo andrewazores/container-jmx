@@ -37,6 +37,7 @@
  */
 package io.cryostat.net;
 
+import java.util.Collections;
 import java.util.Map;
 
 import io.cryostat.platform.ServiceRef;
@@ -47,8 +48,16 @@ public class TargetNode extends AbstractNode {
     @SuppressFBWarnings("URF_UNREAD_FIELD")
     private ServiceRef target;
 
-    public TargetNode(NodeType nodeType, Map<String, String> labels, ServiceRef target) {
-        super(nodeType, labels);
+    public TargetNode(NodeType nodeType, ServiceRef target) {
+        super(
+                target.getAlias().orElse(target.getServiceUri().toString()),
+                nodeType,
+                Collections.emptyMap());
+        this.target = target;
+    }
+
+    public TargetNode(NodeType nodeType, ServiceRef target, Map<String, String> labels) {
+        super(target.getAlias().orElse(target.getServiceUri().toString()), nodeType, labels);
         this.target = target;
     }
 }

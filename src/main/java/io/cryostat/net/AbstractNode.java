@@ -37,21 +37,25 @@
  */
 package io.cryostat.net;
 
-import java.util.EnumSet;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
 
 public abstract class AbstractNode {
-    protected NodeType nodeType;
-    protected Map<String, String> labels;
 
-    protected AbstractNode(NodeType nodeType, Map<String, String> labels) {
+    protected final String name;
+    protected final NodeType nodeType;
+    protected final Map<String, String> labels;
+
+    protected AbstractNode(String name, NodeType nodeType, Map<String, String> labels) {
+        this.name = name;
         this.nodeType = nodeType;
         this.labels = labels;
     }
 
-    protected NodeType getNodeType() {
+    public String getName() {
+        return name;
+    }
+
+    public NodeType getNodeType() {
         return this.nodeType;
     }
 
@@ -63,48 +67,37 @@ public abstract class AbstractNode {
     // platform-specific types can implement
     public enum NodeType {
         UNIVERSE(""), // represents the entire deployment scenario Cryostat finds itself in
-        NAMESPACE("Namespace", UNIVERSE),
-        DEPLOYMENT("Deployment", NAMESPACE),
-        DEPLOYMENTCONFIG("DeploymentConfig", DEPLOYMENT),
-        REPLICASET("ReplicaSet", DEPLOYMENT),
-        REPLICATIONCONTROLLER("ReplicationController", NAMESPACE),
-        POD("Pod", REPLICASET, REPLICATIONCONTROLLER),
-        CONTAINER("Container", POD),
-        ENDPOINT("Endpoint", POD);
+        NAMESPACE("Namespace"),
+        DEPLOYMENT("Deployment"),
+        DEPLOYMENTCONFIG("DeploymentConfig"),
+        REPLICASET("ReplicaSet"),
+        REPLICATIONCONTROLLER("ReplicationController"),
+        SERVICE("Service"),
+        ROUTE("Route"),
+        POD("Pod"),
+        CONTAINER("Container"),
+        ENDPOINT("Endpoint");
 
         private final String kubernetesKind;
-        private Set<NodeType> parentTypes;
 
-        NodeType(String kubernetesKind, NodeType... parentTypes) {
+        NodeType(String kubernetesKind) {
             this.kubernetesKind = kubernetesKind;
-            this.parentTypes = Set.of(parentTypes);
         }
 
         public String getKind() {
             return kubernetesKind;
         }
 
-        public Set<NodeType> getParentTypes() {
-            return parentTypes;
-        }
-
         public static NodeType fromKubernetesKind(String kubernetesKind) {
+            if (kubernetesKind == null) {
+                return null;
+            }
             for (NodeType nt : values()) {
-                if (Objects.equals(nt.getKind(), kubernetesKind)) {
+                if (kubernetesKind.equalsIgnoreCase(nt.kubernetesKind)) {
                     return nt;
                 }
             }
             return null;
-        }
-
-        static {
-            for (NodeType nt : values()) {
-                if (nt.parentTypes == null || nt.parentTypes.isEmpty()) {
-                    nt.parentTypes = EnumSet.noneOf(NodeType.class);
-                } else {
-                    nt.parentTypes = EnumSet.copyOf(nt.parentTypes);
-                }
-            }
         }
     }
 }

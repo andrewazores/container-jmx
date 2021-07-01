@@ -44,7 +44,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -137,17 +136,9 @@ public class CustomTargetPlatformClient extends AbstractPlatformClient {
     @Override
     public EnvironmentNode getTargetEnvironment() {
         EnvironmentNode customTargetsNode =
-                new EnvironmentNode(NodeType.NAMESPACE, Map.of("name", "Custom Targets"));
+                new EnvironmentNode("Custom Targets", NodeType.NAMESPACE);
         targets.forEach(
-                sr ->
-                        customTargetsNode.addChildNode(
-                                new TargetNode(
-                                        NodeType.CONTAINER,
-                                        Map.of(
-                                                "name",
-                                                sr.getAlias()
-                                                        .orElse(sr.getServiceUri().toString())),
-                                        sr)));
+                sr -> customTargetsNode.addChildNode(new TargetNode(NodeType.CONTAINER, sr)));
         return customTargetsNode;
     }
 }

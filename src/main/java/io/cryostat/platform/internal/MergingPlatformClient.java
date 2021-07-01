@@ -120,8 +120,7 @@ public class MergingPlatformClient implements PlatformClient, Consumer<TargetDis
 
     @Override
     public EnvironmentNode getTargetEnvironment() {
-        EnvironmentNode universe =
-                new EnvironmentNode(NodeType.UNIVERSE, Map.of("name", "Universe"));
+        EnvironmentNode universe = new EnvironmentNode("Universe", NodeType.UNIVERSE);
         this.clients.forEach(client -> universe.addChildNode(client.getTargetEnvironment()));
         return universe;
     }

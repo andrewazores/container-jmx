@@ -38,14 +38,20 @@
 package io.cryostat.net;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 public class EnvironmentNode extends AbstractNode implements Comparable<EnvironmentNode> {
-    private List<AbstractNode> children;
 
-    public EnvironmentNode(NodeType nodeType, Map<String, String> labels) {
-        super(nodeType, labels);
+    private final List<AbstractNode> children;
+
+    public EnvironmentNode(String name, NodeType nodeType) {
+        this(name, nodeType, Collections.emptyMap());
+    }
+
+    public EnvironmentNode(String name, NodeType nodeType, Map<String, String> labels) {
+        super(name, nodeType, labels);
         this.children = new ArrayList<>();
     }
 
