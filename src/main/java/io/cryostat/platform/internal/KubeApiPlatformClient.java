@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import dagger.Lazy;
 import io.cryostat.core.log.Logger;
 import io.cryostat.core.net.JFRConnectionToolkit;
 import io.cryostat.core.net.discovery.JvmDiscoveryClient.EventKind;
@@ -53,8 +54,6 @@ import io.cryostat.net.TargetNode;
 import io.cryostat.platform.ServiceRef;
 import io.cryostat.platform.ServiceRef.AnnotationKey;
 import io.cryostat.util.URIUtil;
-
-import dagger.Lazy;
 import io.fabric8.kubernetes.api.model.EndpointAddress;
 import io.fabric8.kubernetes.api.model.EndpointPort;
 import io.fabric8.kubernetes.api.model.EndpointSubset;
@@ -63,6 +62,7 @@ import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.ObjectReference;
 import io.fabric8.kubernetes.api.model.OwnerReference;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.Watcher;
 import io.fabric8.kubernetes.client.WatcherException;
 
@@ -227,25 +227,30 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
 
         // TODO extract this into NodeType
         List<? extends HasMetadata> refs;
-        switch (childType) {
-            case DEPLOYMENT:
-                refs = k8sClient.apps().deployments().inNamespace(namespace).list().getItems();
-                break;
-            case REPLICASET:
-                refs = k8sClient.apps().replicaSets().inNamespace(namespace).list().getItems();
-                break;
-            case REPLICATIONCONTROLLER:
-                refs = k8sClient.replicationControllers().inNamespace(namespace).list().getItems();
-                break;
-            case SERVICE:
-                refs = k8sClient.services().inNamespace(namespace).list().getItems();
-                break;
-            case POD:
-                refs = k8sClient.pods().inNamespace(namespace).list().getItems();
-                break;
-            default:
-                refs = List.of();
-                break;
+        try {
+            switch (childType) {
+                case DEPLOYMENT:
+                    refs = k8sClient.apps().deployments().inNamespace(namespace).list().getItems();
+                    break;
+                case REPLICASET:
+                    refs = k8sClient.apps().replicaSets().inNamespace(namespace).list().getItems();
+                    break;
+                case REPLICATIONCONTROLLER:
+                    refs = k8sClient.replicationControllers().inNamespace(namespace).list().getItems();
+                    break;
+                case SERVICE:
+                    refs = k8sClient.services().inNamespace(namespace).list().getItems();
+                    break;
+                case POD:
+                    refs = k8sClient.pods().inNamespace(namespace).list().getItems();
+                    break;
+                default:
+                    refs = List.of();
+                    break;
+            }
+        } catch (KubernetesClientException kce) {
+            logger.warn(kce);
+            refs = List.of();
         }
         HasMetadata childRef =
                 refs.stream()
