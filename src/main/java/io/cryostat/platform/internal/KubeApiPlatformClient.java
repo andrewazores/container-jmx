@@ -226,34 +226,9 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
         String childName = child.getName();
         NodeType childType = NodeType.fromKubernetesKind(childKind);
 
-        // TODO extract this into NodeType
         List<? extends HasMetadata> refs;
         try {
-            switch (childType) {
-                case DEPLOYMENT:
-                    refs = k8sClient.apps().deployments().inNamespace(namespace).list().getItems();
-                    break;
-                case REPLICASET:
-                    refs = k8sClient.apps().replicaSets().inNamespace(namespace).list().getItems();
-                    break;
-                case REPLICATIONCONTROLLER:
-                    refs =
-                            k8sClient
-                                    .replicationControllers()
-                                    .inNamespace(namespace)
-                                    .list()
-                                    .getItems();
-                    break;
-                case SERVICE:
-                    refs = k8sClient.services().inNamespace(namespace).list().getItems();
-                    break;
-                case POD:
-                    refs = k8sClient.pods().inNamespace(namespace).list().getItems();
-                    break;
-                default:
-                    refs = List.of();
-                    break;
-            }
+            refs = childType.getGetterFunction().apply(k8sClient).apply(namespace);
         } catch (KubernetesClientException kce) {
             logger.warn(kce);
             refs = List.of();
@@ -264,7 +239,11 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
                         .findFirst()
                         .orElse(null);
         if (childRef == null) {
-            return null; // throw?
+            logger.error(
+                    "Could not locate node named {} of type {} while traversing environment",
+                    childName,
+                    childKind);
+            return null;
         }
         OwnerReference owner = childRef.getMetadata().getOwnerReferences().get(0);
         String ownerKind = owner.getKind();

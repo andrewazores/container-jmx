@@ -37,7 +37,12 @@
  */
 package io.cryostat.net;
 
+import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+
+import io.fabric8.kubernetes.api.model.HasMetadata;
+import io.fabric8.kubernetes.client.KubernetesClient;
 
 public abstract class AbstractNode {
 
@@ -68,24 +73,41 @@ public abstract class AbstractNode {
     public enum NodeType {
         UNIVERSE(""), // represents the entire deployment scenario Cryostat finds itself in
         NAMESPACE("Namespace"),
-        DEPLOYMENT("Deployment"),
+        DEPLOYMENT("Deployment", c -> n -> c.apps().deployments().inNamespace(n).list().getItems()),
         DEPLOYMENTCONFIG("DeploymentConfig"),
-        REPLICASET("ReplicaSet"),
-        REPLICATIONCONTROLLER("ReplicationController"),
-        SERVICE("Service"),
+        REPLICASET("ReplicaSet", c -> n -> c.apps().replicaSets().inNamespace(n).list().getItems()),
+        REPLICATIONCONTROLLER(
+                "ReplicationController",
+                c -> n -> c.replicationControllers().inNamespace(n).list().getItems()),
+        SERVICE("Service", c -> n -> c.services().inNamespace(n).list().getItems()),
         ROUTE("Route"),
-        POD("Pod"),
+        POD("Pod", c -> n -> c.pods().inNamespace(n).list().getItems()),
         CONTAINER("Container"),
         ENDPOINT("Endpoint");
 
         private final String kubernetesKind;
+        private final transient Function<
+                        KubernetesClient, Function<String, List<? extends HasMetadata>>>
+                getFn;
 
         NodeType(String kubernetesKind) {
+            this(kubernetesKind, client -> namespace -> List.of());
+        }
+
+        NodeType(
+                String kubernetesKind,
+                Function<KubernetesClient, Function<String, List<? extends HasMetadata>>> getFn) {
             this.kubernetesKind = kubernetesKind;
+            this.getFn = getFn;
         }
 
         public String getKind() {
             return kubernetesKind;
+        }
+
+        public Function<KubernetesClient, Function<String, List<? extends HasMetadata>>>
+                getGetterFunction() {
+            return getFn;
         }
 
         public static NodeType fromKubernetesKind(String kubernetesKind) {
