@@ -62,30 +62,22 @@ public abstract class AbstractNode {
     // FIXME this is Kubernetes-specific, but the type should be an interface that various
     // platform-specific types can implement
     public enum NodeType {
-        UNIVERSE(
-                "",
-                EnumSet.noneOf(
-                        NodeType.class)), // represents the entire deployment scenario Cryostat
-        // finds itself in
+        UNIVERSE(""), // represents the entire deployment scenario Cryostat finds itself in
         NAMESPACE("Namespace", UNIVERSE),
         DEPLOYMENT("Deployment", NAMESPACE),
         DEPLOYMENTCONFIG("DeploymentConfig", DEPLOYMENT),
         REPLICASET("ReplicaSet", DEPLOYMENT),
         REPLICATIONCONTROLLER("ReplicationController", NAMESPACE),
-        POD("Pod", EnumSet.of(REPLICASET, REPLICATIONCONTROLLER)),
+        POD("Pod", REPLICASET, REPLICATIONCONTROLLER),
         CONTAINER("Container", POD),
         ENDPOINT("Endpoint", POD);
 
         private final String kubernetesKind;
-        private final Set<NodeType> parentTypes;
+        private Set<NodeType> parentTypes;
 
-        NodeType(String kubernetesKind, NodeType parentType) {
-            this(kubernetesKind, EnumSet.of(parentType));
-        }
-
-        NodeType(String kubernetesKind, Set<NodeType> parentTypes) {
+        NodeType(String kubernetesKind, NodeType... parentTypes) {
             this.kubernetesKind = kubernetesKind;
-            this.parentTypes = parentTypes;
+            this.parentTypes = Set.of(parentTypes);
         }
 
         public String getKind() {
@@ -103,6 +95,16 @@ public abstract class AbstractNode {
                 }
             }
             return null;
+        }
+
+        static {
+            for (NodeType nt : values()) {
+                if (nt.parentTypes == null || nt.parentTypes.isEmpty()) {
+                    nt.parentTypes = EnumSet.noneOf(NodeType.class);
+                } else {
+                    nt.parentTypes = EnumSet.copyOf(nt.parentTypes);
+                }
+            }
         }
     }
 }
