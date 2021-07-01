@@ -51,6 +51,7 @@ import io.cryostat.core.log.Logger;
 import io.cryostat.core.sys.Environment;
 import io.cryostat.core.tui.ClientWriter;
 import io.cryostat.messaging.MessagingModule;
+import io.cryostat.net.AbstractNode;
 import io.cryostat.net.NetworkModule;
 import io.cryostat.net.web.http.HttpMimeType;
 import io.cryostat.platform.PlatformModule;
@@ -61,6 +62,7 @@ import io.cryostat.sys.SystemModule;
 import io.cryostat.templates.TemplatesModule;
 import io.cryostat.util.GsonJmxServiceUrlAdapter;
 import io.cryostat.util.HttpMimeTypeAdapter;
+import io.cryostat.util.NodeTypeAdapter;
 import io.cryostat.util.PathTypeAdapter;
 import io.cryostat.util.RuleDeserializer;
 
@@ -120,6 +122,7 @@ public abstract class MainModule {
                 .registerTypeAdapter(HttpMimeType.class, new HttpMimeTypeAdapter())
                 .registerTypeHierarchyAdapter(Path.class, new PathTypeAdapter())
                 .registerTypeAdapter(Rule.class, new RuleDeserializer())
+                .registerTypeAdapter(AbstractNode.NodeType.class, new NodeTypeAdapter())
                 .create();
     }
 
