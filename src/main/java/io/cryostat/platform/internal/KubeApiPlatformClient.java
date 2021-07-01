@@ -199,6 +199,8 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
         String targetName = target.getName();
         NodeType targetType = NodeType.fromKubernetesKind(targetKind);
         if (targetType == NodeType.POD) {
+            // if the Endpoint points to a Pod, chase the owner chain up as far as possible, then
+            // add that to the Namespace
             EnvironmentNode pod = new EnvironmentNode(targetName, NodeType.POD);
             getServiceRefs(endpoint).stream()
                     .map(serviceRef -> new TargetNode(NodeType.ENDPOINT, serviceRef))
@@ -215,6 +217,8 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
             }
             nsNode.addChildNode(node);
         } else {
+            // if the Endpoint points to something else(?) than a Pod, just add the target straight
+            // to the Namespace
             getServiceRefs(endpoint).stream()
                     .map(serviceRef -> new TargetNode(NodeType.ENDPOINT, serviceRef))
                     .forEach(nsNode::addChildNode);
