@@ -37,6 +37,7 @@
  */
 package io.cryostat.net;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -45,7 +46,7 @@ import com.google.gson.annotations.SerializedName;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.client.KubernetesClient;
 
-public abstract class AbstractNode {
+public abstract class AbstractNode implements Comparable<AbstractNode> {
 
     protected final String name;
 
@@ -68,8 +69,17 @@ public abstract class AbstractNode {
         return this.nodeType;
     }
 
-    protected Map<String, String> getLabels() {
-        return this.labels;
+    public Map<String, String> getLabels() {
+        return Collections.unmodifiableMap(labels);
+    }
+
+    @Override
+    public int compareTo(AbstractNode other) {
+        int type = nodeType.ordinal() - other.nodeType.ordinal();
+        if (type != 0) {
+            return type;
+        }
+        return name.compareTo(other.name);
     }
 
     @Override
@@ -84,25 +94,17 @@ public abstract class AbstractNode {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
+        if (this == obj) return true;
+        if (obj == null) return false;
+        if (getClass() != obj.getClass()) return false;
         AbstractNode other = (AbstractNode) obj;
         if (labels == null) {
-            if (other.labels != null)
-                return false;
-        } else if (!labels.equals(other.labels))
-            return false;
+            if (other.labels != null) return false;
+        } else if (!labels.equals(other.labels)) return false;
         if (name == null) {
-            if (other.name != null)
-                return false;
-        } else if (!name.equals(other.name))
-            return false;
-        if (nodeType != other.nodeType)
-            return false;
+            if (other.name != null) return false;
+        } else if (!name.equals(other.name)) return false;
+        if (nodeType != other.nodeType) return false;
         return true;
     }
 

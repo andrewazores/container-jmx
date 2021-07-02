@@ -46,7 +46,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 public class TargetNode extends AbstractNode {
     @SuppressFBWarnings("URF_UNREAD_FIELD")
-    private ServiceRef target;
+    private final ServiceRef target;
 
     public TargetNode(NodeType nodeType, ServiceRef target) {
         super(
@@ -71,18 +71,13 @@ public class TargetNode extends AbstractNode {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (!super.equals(obj))
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
+        if (this == obj) return true;
+        if (!super.equals(obj)) return false;
+        if (getClass() != obj.getClass()) return false;
         TargetNode other = (TargetNode) obj;
         if (target == null) {
-            if (other.target != null)
-                return false;
-        } else if (!target.equals(other.target))
-            return false;
+            if (other.target != null) return false;
+        } else if (!target.equals(other.target)) return false;
         return true;
     }
 }

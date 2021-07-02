@@ -37,14 +37,14 @@
  */
 package io.cryostat.net;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
-public class EnvironmentNode extends AbstractNode implements Comparable<EnvironmentNode> {
+public class EnvironmentNode extends AbstractNode {
 
-    private final List<AbstractNode> children;
+    private final SortedSet<AbstractNode> children;
 
     public EnvironmentNode(String name, NodeType nodeType) {
         this(name, nodeType, Collections.emptyMap());
@@ -52,27 +52,15 @@ public class EnvironmentNode extends AbstractNode implements Comparable<Environm
 
     public EnvironmentNode(String name, NodeType nodeType, Map<String, String> labels) {
         super(name, nodeType, labels);
-        this.children = new ArrayList<>();
+        this.children = new TreeSet<>();
     }
 
-    public int compareTo(EnvironmentNode node) {
-        if (this.nodeType.ordinal() > node.getNodeType().ordinal()) return 1;
-        else if (this.nodeType.ordinal() == node.getNodeType().ordinal()) return 0;
-        else return -1;
-    }
-
-    public boolean hasChildren() {
-        return !children.isEmpty();
-    }
-
-    public Map<String, String> getLabels() {
-        return this.labels;
+    public SortedSet<AbstractNode> getChildren() {
+        return Collections.unmodifiableSortedSet(children);
     }
 
     public void addChildNode(AbstractNode child) {
-        if (child != null) {
-            this.children.add(child);
-        }
+        this.children.add(child);
     }
 
     @Override
@@ -85,18 +73,13 @@ public class EnvironmentNode extends AbstractNode implements Comparable<Environm
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (!super.equals(obj))
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
+        if (this == obj) return true;
+        if (!super.equals(obj)) return false;
+        if (getClass() != obj.getClass()) return false;
         EnvironmentNode other = (EnvironmentNode) obj;
         if (children == null) {
-            if (other.children != null)
-                return false;
-        } else if (!children.equals(other.children))
-            return false;
+            if (other.children != null) return false;
+        } else if (!children.equals(other.children)) return false;
         return true;
     }
 }
