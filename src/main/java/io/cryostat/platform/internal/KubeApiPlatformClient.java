@@ -247,7 +247,7 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
         try {
             childRef =
                     ((KubernetesNodeType) child.getNodeType())
-                            .getGetterFunction()
+                            .getQueryFunction()
                             .apply(k8sClient)
                             .apply(namespace)
                             .apply(child.getName());
@@ -388,7 +388,7 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
         }
 
         public Function<KubernetesClient, Function<String, Function<String, ? extends HasMetadata>>>
-                getGetterFunction() {
+                getQueryFunction() {
             return getFn;
         }
 
