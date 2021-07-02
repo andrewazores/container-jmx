@@ -55,12 +55,13 @@ import io.cryostat.platform.internal.CustomTargetPlatformClient;
 import io.cryostat.platform.internal.MergingPlatformClient;
 import io.cryostat.platform.internal.PlatformDetectionStrategy;
 import io.cryostat.platform.internal.PlatformStrategyModule;
+import io.cryostat.platform.overview.PlatformOverviewModule;
 
 import com.google.gson.Gson;
 import dagger.Module;
 import dagger.Provides;
 
-@Module(includes = {PlatformStrategyModule.class})
+@Module(includes = {PlatformStrategyModule.class, PlatformOverviewModule.class})
 public abstract class PlatformModule {
 
     static final String PLATFORM_STRATEGY_ENV_VAR = "CRYOSTAT_PLATFORM";

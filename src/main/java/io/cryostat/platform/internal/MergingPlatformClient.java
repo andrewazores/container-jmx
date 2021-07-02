@@ -47,11 +47,11 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import io.cryostat.messaging.notifications.NotificationFactory;
-import io.cryostat.net.AbstractNode.BaseNodeType;
-import io.cryostat.net.EnvironmentNode;
 import io.cryostat.platform.PlatformClient;
 import io.cryostat.platform.ServiceRef;
 import io.cryostat.platform.TargetDiscoveryEvent;
+import io.cryostat.platform.overview.BaseNodeType;
+import io.cryostat.platform.overview.EnvironmentNode;
 
 public class MergingPlatformClient implements PlatformClient, Consumer<TargetDiscoveryEvent> {
 

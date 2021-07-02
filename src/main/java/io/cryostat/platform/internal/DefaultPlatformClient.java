@@ -51,12 +51,12 @@ import io.cryostat.core.log.Logger;
 import io.cryostat.core.net.discovery.DiscoveredJvmDescriptor;
 import io.cryostat.core.net.discovery.JvmDiscoveryClient;
 import io.cryostat.core.net.discovery.JvmDiscoveryClient.JvmDiscoveryEvent;
-import io.cryostat.net.AbstractNode.BaseNodeType;
-import io.cryostat.net.AbstractNode.NodeType;
-import io.cryostat.net.EnvironmentNode;
-import io.cryostat.net.TargetNode;
 import io.cryostat.platform.ServiceRef;
 import io.cryostat.platform.ServiceRef.AnnotationKey;
+import io.cryostat.platform.overview.BaseNodeType;
+import io.cryostat.platform.overview.EnvironmentNode;
+import io.cryostat.platform.overview.NodeType;
+import io.cryostat.platform.overview.TargetNode;
 import io.cryostat.util.URIUtil;
 
 public class DefaultPlatformClient extends AbstractPlatformClient

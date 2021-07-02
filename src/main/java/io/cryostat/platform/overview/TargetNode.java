@@ -35,39 +35,34 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package io.cryostat.net;
+package io.cryostat.platform.overview;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.SortedSet;
-import java.util.TreeSet;
 
-public class EnvironmentNode extends AbstractNode {
+import io.cryostat.platform.ServiceRef;
 
-    private final SortedSet<AbstractNode> children;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
-    public EnvironmentNode(String name, NodeType nodeType) {
-        this(name, nodeType, Collections.emptyMap());
+public class TargetNode extends AbstractNode {
+    @SuppressFBWarnings("URF_UNREAD_FIELD")
+    private final ServiceRef target;
+
+    public TargetNode(NodeType nodeType, ServiceRef target) {
+        super(target.getServiceUri().toString(), nodeType, Collections.emptyMap());
+        this.target = target;
     }
 
-    public EnvironmentNode(String name, NodeType nodeType, Map<String, String> labels) {
-        super(name, nodeType, labels);
-        this.children = new TreeSet<>();
-    }
-
-    public SortedSet<AbstractNode> getChildren() {
-        return Collections.unmodifiableSortedSet(children);
-    }
-
-    public void addChildNode(AbstractNode child) {
-        this.children.add(child);
+    public TargetNode(NodeType nodeType, ServiceRef target, Map<String, String> labels) {
+        super(target.getServiceUri().toString(), nodeType, labels);
+        this.target = target;
     }
 
     @Override
     public int hashCode() {
         final int prime = 31;
         int result = super.hashCode();
-        result = prime * result + ((children == null) ? 0 : children.hashCode());
+        result = prime * result + ((target == null) ? 0 : target.hashCode());
         return result;
     }
 
@@ -76,10 +71,10 @@ public class EnvironmentNode extends AbstractNode {
         if (this == obj) return true;
         if (!super.equals(obj)) return false;
         if (getClass() != obj.getClass()) return false;
-        EnvironmentNode other = (EnvironmentNode) obj;
-        if (children == null) {
-            if (other.children != null) return false;
-        } else if (!children.equals(other.children)) return false;
+        TargetNode other = (TargetNode) obj;
+        if (target == null) {
+            if (other.target != null) return false;
+        } else if (!target.equals(other.target)) return false;
         return true;
     }
 }

@@ -35,31 +35,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package io.cryostat.util;
+package io.cryostat.platform.overview;
 
-import java.io.IOException;
+import dagger.Module;
 
-import io.cryostat.platform.internal.CustomTargetPlatformClient;
-import io.cryostat.platform.internal.CustomTargetPlatformClient.CustomTargetNodeType;
-import io.cryostat.platform.overview.NodeType;
-
-import com.google.gson.TypeAdapter;
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonWriter;
-
-public class CustomTargetNodeTypeAdapter extends TypeAdapter<NodeType> {
-
-    @Override
-    public CustomTargetNodeType read(JsonReader reader) throws IOException {
-        String token = reader.nextString();
-        if (CustomTargetPlatformClient.NODE_TYPE.getKind().equals(token)) {
-            return CustomTargetPlatformClient.NODE_TYPE;
-        }
-        return null;
-    }
-
-    @Override
-    public void write(JsonWriter writer, NodeType nodeType) throws IOException {
-        writer.value(nodeType.getKind());
-    }
-}
+@Module
+public abstract class PlatformOverviewModule {}

@@ -40,10 +40,10 @@ package io.cryostat.net.web.http.api.v2;
 import javax.inject.Inject;
 
 import io.cryostat.net.AuthManager;
-import io.cryostat.net.EnvironmentNode;
 import io.cryostat.net.web.http.HttpMimeType;
 import io.cryostat.net.web.http.api.ApiVersion;
 import io.cryostat.platform.PlatformClient;
+import io.cryostat.platform.overview.EnvironmentNode;
 
 import com.google.gson.Gson;
 import io.vertx.core.http.HttpMethod;

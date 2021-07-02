@@ -35,31 +35,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package io.cryostat.util;
+package io.cryostat.platform.overview;
 
-import java.io.IOException;
+public enum BaseNodeType implements NodeType {
+    // represents the entire deployment scenario Cryostat finds itself in
+    UNIVERSE(""),
+    // represents a division of the deployment scenario - the universe may consist of a
+    // Kubernetes Realm and a JDP Realm, for example
+    REALM("Realm"),
+    ;
 
-import io.cryostat.platform.internal.CustomTargetPlatformClient;
-import io.cryostat.platform.internal.CustomTargetPlatformClient.CustomTargetNodeType;
-import io.cryostat.platform.overview.NodeType;
+    private final String kind;
 
-import com.google.gson.TypeAdapter;
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonWriter;
-
-public class CustomTargetNodeTypeAdapter extends TypeAdapter<NodeType> {
-
-    @Override
-    public CustomTargetNodeType read(JsonReader reader) throws IOException {
-        String token = reader.nextString();
-        if (CustomTargetPlatformClient.NODE_TYPE.getKind().equals(token)) {
-            return CustomTargetPlatformClient.NODE_TYPE;
-        }
-        return null;
+    BaseNodeType(String kind) {
+        this.kind = kind;
     }
 
     @Override
-    public void write(JsonWriter writer, NodeType nodeType) throws IOException {
-        writer.value(nodeType.getKind());
+    public String getKind() {
+        return kind;
     }
 }

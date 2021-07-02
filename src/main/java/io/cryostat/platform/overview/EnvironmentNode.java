@@ -35,31 +35,51 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package io.cryostat.util;
+package io.cryostat.platform.overview;
 
-import java.io.IOException;
+import java.util.Collections;
+import java.util.Map;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
-import io.cryostat.platform.internal.CustomTargetPlatformClient;
-import io.cryostat.platform.internal.CustomTargetPlatformClient.CustomTargetNodeType;
-import io.cryostat.platform.overview.NodeType;
+public class EnvironmentNode extends AbstractNode {
 
-import com.google.gson.TypeAdapter;
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonWriter;
+    private final SortedSet<AbstractNode> children;
 
-public class CustomTargetNodeTypeAdapter extends TypeAdapter<NodeType> {
+    public EnvironmentNode(String name, NodeType nodeType) {
+        this(name, nodeType, Collections.emptyMap());
+    }
 
-    @Override
-    public CustomTargetNodeType read(JsonReader reader) throws IOException {
-        String token = reader.nextString();
-        if (CustomTargetPlatformClient.NODE_TYPE.getKind().equals(token)) {
-            return CustomTargetPlatformClient.NODE_TYPE;
-        }
-        return null;
+    public EnvironmentNode(String name, NodeType nodeType, Map<String, String> labels) {
+        super(name, nodeType, labels);
+        this.children = new TreeSet<>();
+    }
+
+    public SortedSet<AbstractNode> getChildren() {
+        return Collections.unmodifiableSortedSet(children);
+    }
+
+    public void addChildNode(AbstractNode child) {
+        this.children.add(child);
     }
 
     @Override
-    public void write(JsonWriter writer, NodeType nodeType) throws IOException {
-        writer.value(nodeType.getKind());
+    public int hashCode() {
+        final int prime = 31;
+        int result = super.hashCode();
+        result = prime * result + ((children == null) ? 0 : children.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (!super.equals(obj)) return false;
+        if (getClass() != obj.getClass()) return false;
+        EnvironmentNode other = (EnvironmentNode) obj;
+        if (children == null) {
+            if (other.children != null) return false;
+        } else if (!children.equals(other.children)) return false;
+        return true;
     }
 }

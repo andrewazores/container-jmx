@@ -35,14 +35,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package io.cryostat.net;
+package io.cryostat.platform.overview;
 
 import java.util.Collections;
 import java.util.Map;
 
 import com.google.gson.annotations.SerializedName;
 
-// TODO move this into a separate (sub?)package. This seems to fit better somewhere within platform.
 public abstract class AbstractNode implements Comparable<AbstractNode> {
 
     protected final String name;
@@ -103,31 +102,5 @@ public abstract class AbstractNode implements Comparable<AbstractNode> {
         } else if (!name.equals(other.name)) return false;
         if (nodeType != other.nodeType) return false;
         return true;
-    }
-
-    public interface NodeType {
-        String getKind();
-
-        int ordinal();
-    }
-
-    public enum BaseNodeType implements NodeType {
-        // represents the entire deployment scenario Cryostat finds itself in
-        UNIVERSE(""),
-        // represents a division of the deployment scenario - the universe may consist of a
-        // Kubernetes Realm and a JDP Realm, for example
-        REALM("Realm"),
-        ;
-
-        private final String kind;
-
-        BaseNodeType(String kind) {
-            this.kind = kind;
-        }
-
-        @Override
-        public String getKind() {
-            return kind;
-        }
     }
 }

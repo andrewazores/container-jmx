@@ -39,7 +39,7 @@ package io.cryostat.util;
 
 import java.io.IOException;
 
-import io.cryostat.net.AbstractNode.BaseNodeType;
+import io.cryostat.platform.overview.BaseNodeType;
 
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
