@@ -243,22 +243,18 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
 
     private EnvironmentNode getOrCreateOwnerNode(
             EnvironmentNode child, Map<Pair<String, String>, EnvironmentNode> nodeCache) {
-        List<? extends HasMetadata> refs;
+        HasMetadata childRef;
         try {
-            refs =
+            childRef =
                     ((KubernetesNodeType) child.getNodeType())
                             .getGetterFunction()
                             .apply(k8sClient)
-                            .apply(namespace);
+                            .apply(namespace)
+                            .apply(child.getName());
         } catch (KubernetesClientException kce) {
             logger.error(kce);
             return null;
         }
-        HasMetadata childRef =
-                refs.stream()
-                        .filter(o -> Objects.equals(o.getMetadata().getName(), child.getName()))
-                        .findFirst()
-                        .orElse(null);
         if (childRef == null) {
             logger.error(
                     "Could not locate node named {} of kind {} while traversing environment",
@@ -346,33 +342,43 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
     public enum KubernetesNodeType implements NodeType {
         NAMESPACE("Namespace"),
         STATEFULSET(
-                "StatefulSet", c -> n -> c.apps().statefulSets().inNamespace(n).list().getItems()),
-        DAEMONSET("DaemonSet", c -> n -> c.apps().daemonSets().inNamespace(n).list().getItems()),
-        DEPLOYMENT("Deployment", c -> n -> c.apps().deployments().inNamespace(n).list().getItems()),
+                "StatefulSet",
+                c -> ns -> n -> c.apps().statefulSets().inNamespace(ns).withName(n).get()),
+        DAEMONSET(
+                "DaemonSet",
+                c -> ns -> n -> c.apps().daemonSets().inNamespace(ns).withName(n).get()),
+        DEPLOYMENT(
+                "Deployment",
+                c -> ns -> n -> c.apps().deployments().inNamespace(ns).withName(n).get()),
         DEPLOYMENTCONFIG("DeploymentConfig"),
-        REPLICASET("ReplicaSet", c -> n -> c.apps().replicaSets().inNamespace(n).list().getItems()),
+        REPLICASET(
+                "ReplicaSet",
+                c -> ns -> n -> c.apps().replicaSets().inNamespace(ns).withName(n).get()),
         REPLICATIONCONTROLLER(
                 "ReplicationController",
-                c -> n -> c.replicationControllers().inNamespace(n).list().getItems()),
-        SERVICE("Service", c -> n -> c.services().inNamespace(n).list().getItems()),
-        INGRESS("Ingress", c -> n -> c.network().ingress().inNamespace(n).list().getItems()),
+                c -> ns -> n -> c.replicationControllers().inNamespace(ns).withName(n).get()),
+        SERVICE("Service", c -> ns -> n -> c.services().inNamespace(ns).withName(n).get()),
+        INGRESS("Ingress", c -> ns -> n -> c.network().ingress().inNamespace(ns).withName(n).get()),
         ROUTE("Route"),
-        POD("Pod", c -> n -> c.pods().inNamespace(n).list().getItems()),
+        POD("Pod", c -> ns -> n -> c.pods().inNamespace(ns).withName(n).get()),
         ENDPOINT("Endpoint"),
         ;
 
         private final String kubernetesKind;
         private final transient Function<
-                        KubernetesClient, Function<String, List<? extends HasMetadata>>>
+                        KubernetesClient, Function<String, Function<String, ? extends HasMetadata>>>
                 getFn;
 
         KubernetesNodeType(String kubernetesKind) {
-            this(kubernetesKind, client -> namespace -> List.of());
+            this(kubernetesKind, client -> namespace -> name -> null);
         }
 
         KubernetesNodeType(
                 String kubernetesKind,
-                Function<KubernetesClient, Function<String, List<? extends HasMetadata>>> getFn) {
+                Function<
+                                KubernetesClient,
+                                Function<String, Function<String, ? extends HasMetadata>>>
+                        getFn) {
             this.kubernetesKind = kubernetesKind;
             this.getFn = getFn;
         }
@@ -381,7 +387,7 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
             return kubernetesKind;
         }
 
-        public Function<KubernetesClient, Function<String, List<? extends HasMetadata>>>
+        public Function<KubernetesClient, Function<String, Function<String, ? extends HasMetadata>>>
                 getGetterFunction() {
             return getFn;
         }
