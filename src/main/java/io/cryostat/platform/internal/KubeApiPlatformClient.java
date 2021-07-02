@@ -162,6 +162,10 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
 
     @Override
     public EnvironmentNode getTargetEnvironment() {
+        // TODO refactor and extract this logic to a separate class. This class should maintain some
+        // of the intermediate results as fields (ex. node cache and final nsNode) with
+        // synchronization so that the owner reference chase-up from each Endpoints object can be
+        // done in parallel, since these each involve multiple network requests
         try {
             EnvironmentNode nsNode = new EnvironmentNode(namespace, NodeType.NAMESPACE);
             k8sClient

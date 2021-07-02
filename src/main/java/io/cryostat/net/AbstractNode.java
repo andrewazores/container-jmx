@@ -46,6 +46,7 @@ import com.google.gson.annotations.SerializedName;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.client.KubernetesClient;
 
+// TODO move this into a separate (sub?)package. This seems to fit better somewhere within platform.
 public abstract class AbstractNode implements Comparable<AbstractNode> {
 
     protected final String name;
