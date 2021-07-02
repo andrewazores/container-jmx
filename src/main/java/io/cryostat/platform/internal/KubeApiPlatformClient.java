@@ -40,7 +40,9 @@ package io.cryostat.platform.internal;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -66,6 +68,7 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.Watcher;
 import io.fabric8.kubernetes.client.WatcherException;
+import org.apache.commons.lang3.tuple.Pair;
 
 class KubeApiPlatformClient extends AbstractPlatformClient {
 
@@ -210,9 +213,10 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
                     .map(serviceRef -> new TargetNode(NodeType.ENDPOINT, serviceRef))
                     .forEach(pod::addChildNode);
 
+            Map<Pair<String, String>, EnvironmentNode> nodeCache = new HashMap<>();
             EnvironmentNode node = pod;
             while (true) {
-                EnvironmentNode owner = createOwnerNode(node);
+                EnvironmentNode owner = getOrCreateOwnerNode(node, nodeCache);
                 if (owner == null) {
                     break;
                 }
@@ -229,9 +233,8 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
         }
     }
 
-    // TODO this should return an existing owner node if there already is one in the tree, rather
-    // than creating a duplicate
-    private EnvironmentNode createOwnerNode(EnvironmentNode child) {
+    private EnvironmentNode getOrCreateOwnerNode(
+            EnvironmentNode child, Map<Pair<String, String>, EnvironmentNode> nodeCache) {
         List<? extends HasMetadata> refs;
         try {
             refs = child.getNodeType().getGetterFunction().apply(k8sClient).apply(namespace);
@@ -260,11 +263,16 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
                         .orElse(owners.get(0));
         String ownerKind = owner.getKind();
         String ownerName = owner.getName();
-        NodeType ownerType = NodeType.fromKubernetesKind(ownerKind);
-        if (ownerType == null) {
-            return null;
-        }
-        return new EnvironmentNode(ownerName, ownerType);
+        Pair<String, String> cacheKey = Pair.of(ownerKind, ownerName);
+        return nodeCache.computeIfAbsent(
+                cacheKey,
+                k -> {
+                    NodeType ownerType = NodeType.fromKubernetesKind(k.getLeft());
+                    if (ownerType == null) {
+                        return null;
+                    }
+                    return new EnvironmentNode(k.getRight(), ownerType);
+                });
     }
 
     private boolean isCompatibleSubset(EndpointSubset subset) {
