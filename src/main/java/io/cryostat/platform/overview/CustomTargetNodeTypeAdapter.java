@@ -35,19 +35,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package io.cryostat.util;
+package io.cryostat.platform.overview;
 
 import java.io.IOException;
 
 import io.cryostat.platform.internal.CustomTargetPlatformClient;
 import io.cryostat.platform.internal.CustomTargetPlatformClient.CustomTargetNodeType;
-import io.cryostat.platform.overview.NodeType;
+import io.cryostat.util.PluggableTypeAdapter;
 
-import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
-public class CustomTargetNodeTypeAdapter extends TypeAdapter<NodeType> {
+public class CustomTargetNodeTypeAdapter extends PluggableTypeAdapter<CustomTargetNodeType> {
+
+    public CustomTargetNodeTypeAdapter() {
+        super(CustomTargetNodeType.class);
+    }
 
     @Override
     public CustomTargetNodeType read(JsonReader reader) throws IOException {
@@ -59,7 +62,7 @@ public class CustomTargetNodeTypeAdapter extends TypeAdapter<NodeType> {
     }
 
     @Override
-    public void write(JsonWriter writer, NodeType nodeType) throws IOException {
+    public void write(JsonWriter writer, CustomTargetNodeType nodeType) throws IOException {
         writer.value(nodeType.getKind());
     }
 }

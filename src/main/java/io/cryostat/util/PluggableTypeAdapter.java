@@ -37,29 +37,17 @@
  */
 package io.cryostat.util;
 
-import java.io.IOException;
-
-import io.cryostat.platform.overview.BaseNodeType;
-
 import com.google.gson.TypeAdapter;
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonWriter;
 
-public class BaseNodeTypeAdapter extends TypeAdapter<BaseNodeType> {
+public abstract class PluggableTypeAdapter<T> extends TypeAdapter<T> {
 
-    @Override
-    public BaseNodeType read(JsonReader reader) throws IOException {
-        String token = reader.nextString();
-        for (BaseNodeType nt : BaseNodeType.values()) {
-            if (nt.getKind().equals(token)) {
-                return nt;
-            }
-        }
-        return null;
+    protected final Class<T> klazz;
+
+    public PluggableTypeAdapter(Class<T> klazz) {
+        this.klazz = klazz;
     }
 
-    @Override
-    public void write(JsonWriter writer, BaseNodeType nodeType) throws IOException {
-        writer.value(nodeType.getKind());
+    public Class<T> getAdaptedType() {
+        return klazz;
     }
 }

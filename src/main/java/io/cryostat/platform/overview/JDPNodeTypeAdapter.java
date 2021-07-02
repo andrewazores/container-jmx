@@ -37,36 +37,32 @@
  */
 package io.cryostat.platform.overview;
 
+import java.io.IOException;
+
+import io.cryostat.platform.internal.DefaultPlatformClient;
+import io.cryostat.platform.internal.DefaultPlatformClient.JDPNodeType;
 import io.cryostat.util.PluggableTypeAdapter;
 
-import dagger.Module;
-import dagger.Provides;
-import dagger.multibindings.IntoSet;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 
-@Module
-public abstract class PlatformOverviewModule {
+public class JDPNodeTypeAdapter extends PluggableTypeAdapter<JDPNodeType> {
 
-    @Provides
-    @IntoSet
-    static PluggableTypeAdapter<?> provideBaseNodeTypeAdapter() {
-        return new BaseNodeTypeAdapter();
+    public JDPNodeTypeAdapter() {
+        super(JDPNodeType.class);
     }
 
-    @Provides
-    @IntoSet
-    static PluggableTypeAdapter<?> provideCustomTargetNodeTypeAdapter() {
-        return new CustomTargetNodeTypeAdapter();
+    @Override
+    public JDPNodeType read(JsonReader reader) throws IOException {
+        String token = reader.nextString();
+        if (DefaultPlatformClient.NODE_TYPE.getKind().equalsIgnoreCase(token)) {
+            return DefaultPlatformClient.NODE_TYPE;
+        }
+        return null;
     }
 
-    @Provides
-    @IntoSet
-    static PluggableTypeAdapter<?> provideJDPNodeTypeAdapter() {
-        return new JDPNodeTypeAdapter();
-    }
-
-    @Provides
-    @IntoSet
-    static PluggableTypeAdapter<?> provideKubernetesNodeTypeAdapter() {
-        return new KubernetesNodeTypeAdapter();
+    @Override
+    public void write(JsonWriter writer, JDPNodeType nodeType) throws IOException {
+        writer.value(nodeType.getKind());
     }
 }

@@ -35,26 +35,34 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package io.cryostat.util;
+package io.cryostat.platform.overview;
 
 import java.io.IOException;
 
-import io.cryostat.platform.internal.KubeApiPlatformClient.KubernetesNodeType;
+import io.cryostat.util.PluggableTypeAdapter;
 
-import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
-public class KubernetesNodeTypeAdapter extends TypeAdapter<KubernetesNodeType> {
+public class BaseNodeTypeAdapter extends PluggableTypeAdapter<BaseNodeType> {
 
-    @Override
-    public KubernetesNodeType read(JsonReader reader) throws IOException {
-        String token = reader.nextString();
-        return KubernetesNodeType.fromKubernetesKind(token);
+    public BaseNodeTypeAdapter() {
+        super(BaseNodeType.class);
     }
 
     @Override
-    public void write(JsonWriter writer, KubernetesNodeType nodeType) throws IOException {
+    public BaseNodeType read(JsonReader reader) throws IOException {
+        String token = reader.nextString();
+        for (BaseNodeType nt : BaseNodeType.values()) {
+            if (nt.getKind().equals(token)) {
+                return nt;
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public void write(JsonWriter writer, BaseNodeType nodeType) throws IOException {
         writer.value(nodeType.getKind());
     }
 }
