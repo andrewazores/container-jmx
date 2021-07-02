@@ -51,18 +51,24 @@ import io.cryostat.core.log.Logger;
 import io.cryostat.core.sys.Environment;
 import io.cryostat.core.tui.ClientWriter;
 import io.cryostat.messaging.MessagingModule;
-import io.cryostat.net.AbstractNode;
+import io.cryostat.net.AbstractNode.BaseNodeType;
 import io.cryostat.net.NetworkModule;
 import io.cryostat.net.web.http.HttpMimeType;
 import io.cryostat.platform.PlatformModule;
+import io.cryostat.platform.internal.CustomTargetPlatformClient.CustomTargetNodeType;
+import io.cryostat.platform.internal.DefaultPlatformClient.JDPNodeType;
+import io.cryostat.platform.internal.KubeApiPlatformClient.KubernetesNodeType;
 import io.cryostat.recordings.RecordingsModule;
 import io.cryostat.rules.Rule;
 import io.cryostat.rules.RulesModule;
 import io.cryostat.sys.SystemModule;
 import io.cryostat.templates.TemplatesModule;
+import io.cryostat.util.BaseNodeTypeAdapter;
+import io.cryostat.util.CustomTargetNodeTypeAdapter;
 import io.cryostat.util.GsonJmxServiceUrlAdapter;
 import io.cryostat.util.HttpMimeTypeAdapter;
-import io.cryostat.util.NodeTypeAdapter;
+import io.cryostat.util.JDPNodeTypeAdapter;
+import io.cryostat.util.KubernetesNodeTypeAdapter;
 import io.cryostat.util.PathTypeAdapter;
 import io.cryostat.util.RuleDeserializer;
 
@@ -122,7 +128,11 @@ public abstract class MainModule {
                 .registerTypeAdapter(HttpMimeType.class, new HttpMimeTypeAdapter())
                 .registerTypeHierarchyAdapter(Path.class, new PathTypeAdapter())
                 .registerTypeAdapter(Rule.class, new RuleDeserializer())
-                .registerTypeAdapter(AbstractNode.NodeType.class, new NodeTypeAdapter())
+                // TODO extract these to a subpackage/submodule
+                .registerTypeAdapter(BaseNodeType.class, new BaseNodeTypeAdapter())
+                .registerTypeAdapter(KubernetesNodeType.class, new KubernetesNodeTypeAdapter())
+                .registerTypeAdapter(CustomTargetNodeType.class, new CustomTargetNodeTypeAdapter())
+                .registerTypeAdapter(JDPNodeType.class, new JDPNodeTypeAdapter())
                 .create();
     }
 

@@ -38,13 +38,9 @@
 package io.cryostat.net;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 import com.google.gson.annotations.SerializedName;
-import io.fabric8.kubernetes.api.model.HasMetadata;
-import io.fabric8.kubernetes.client.KubernetesClient;
 
 // TODO move this into a separate (sub?)package. This seems to fit better somewhere within platform.
 public abstract class AbstractNode implements Comparable<AbstractNode> {
@@ -109,62 +105,29 @@ public abstract class AbstractNode implements Comparable<AbstractNode> {
         return true;
     }
 
-    // FIXME this is Kubernetes-specific, but the type should be an interface that various
-    // platform-specific types can implement
-    public enum NodeType {
-        UNIVERSE(""), // represents the entire deployment scenario Cryostat finds itself in
-        NAMESPACE("Namespace"),
-        STATEFULSET(
-                "StatefulSet", c -> n -> c.apps().statefulSets().inNamespace(n).list().getItems()),
-        DAEMONSET("DaemonSet", c -> n -> c.apps().daemonSets().inNamespace(n).list().getItems()),
-        DEPLOYMENT("Deployment", c -> n -> c.apps().deployments().inNamespace(n).list().getItems()),
-        DEPLOYMENTCONFIG("DeploymentConfig"),
-        REPLICASET("ReplicaSet", c -> n -> c.apps().replicaSets().inNamespace(n).list().getItems()),
-        REPLICATIONCONTROLLER(
-                "ReplicationController",
-                c -> n -> c.replicationControllers().inNamespace(n).list().getItems()),
-        SERVICE("Service", c -> n -> c.services().inNamespace(n).list().getItems()),
-        INGRESS("Ingress", c -> n -> c.network().ingress().inNamespace(n).list().getItems()),
-        ROUTE("Route"),
-        POD("Pod", c -> n -> c.pods().inNamespace(n).list().getItems()),
-        CONTAINER("Container"),
-        ENDPOINT("Endpoint");
+    public interface NodeType {
+        String getKind();
 
-        private final String kubernetesKind;
-        private final transient Function<
-                        KubernetesClient, Function<String, List<? extends HasMetadata>>>
-                getFn;
+        int ordinal();
+    }
 
-        NodeType(String kubernetesKind) {
-            this(kubernetesKind, client -> namespace -> List.of());
+    public enum BaseNodeType implements NodeType {
+        // represents the entire deployment scenario Cryostat finds itself in
+        UNIVERSE(""),
+        // represents a division of the deployment scenario - the universe may consist of a
+        // Kubernetes Realm and a JDP Realm, for example
+        REALM("Realm"),
+        ;
+
+        private final String kind;
+
+        BaseNodeType(String kind) {
+            this.kind = kind;
         }
 
-        NodeType(
-                String kubernetesKind,
-                Function<KubernetesClient, Function<String, List<? extends HasMetadata>>> getFn) {
-            this.kubernetesKind = kubernetesKind;
-            this.getFn = getFn;
-        }
-
+        @Override
         public String getKind() {
-            return kubernetesKind;
-        }
-
-        public Function<KubernetesClient, Function<String, List<? extends HasMetadata>>>
-                getGetterFunction() {
-            return getFn;
-        }
-
-        public static NodeType fromKubernetesKind(String kubernetesKind) {
-            if (kubernetesKind == null) {
-                return null;
-            }
-            for (NodeType nt : values()) {
-                if (kubernetesKind.equalsIgnoreCase(nt.kubernetesKind)) {
-                    return nt;
-                }
-            }
-            return null;
+            return kind;
         }
     }
 }

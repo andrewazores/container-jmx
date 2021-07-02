@@ -51,7 +51,7 @@ import io.cryostat.core.log.Logger;
 import io.cryostat.core.net.discovery.DiscoveredJvmDescriptor;
 import io.cryostat.core.net.discovery.JvmDiscoveryClient;
 import io.cryostat.core.net.discovery.JvmDiscoveryClient.JvmDiscoveryEvent;
-import io.cryostat.net.AbstractNode;
+import io.cryostat.net.AbstractNode.BaseNodeType;
 import io.cryostat.net.AbstractNode.NodeType;
 import io.cryostat.net.EnvironmentNode;
 import io.cryostat.net.TargetNode;
@@ -59,7 +59,10 @@ import io.cryostat.platform.ServiceRef;
 import io.cryostat.platform.ServiceRef.AnnotationKey;
 import io.cryostat.util.URIUtil;
 
-class DefaultPlatformClient extends AbstractPlatformClient implements Consumer<JvmDiscoveryEvent> {
+public class DefaultPlatformClient extends AbstractPlatformClient
+        implements Consumer<JvmDiscoveryEvent> {
+
+    public static final JDPNodeType NODE_TYPE = new JDPNodeType();
 
     private final Logger logger;
     private final JvmDiscoveryClient discoveryClient;
@@ -115,12 +118,27 @@ class DefaultPlatformClient extends AbstractPlatformClient implements Consumer<J
 
     @Override
     public EnvironmentNode getTargetEnvironment() {
-        EnvironmentNode root = new EnvironmentNode("JDP", NodeType.NAMESPACE);
+        EnvironmentNode root = new EnvironmentNode("JDP", BaseNodeType.REALM);
         List<ServiceRef> targets = listDiscoverableServices();
         for (ServiceRef target : targets) {
-            TargetNode targetNode = new TargetNode(AbstractNode.NodeType.CONTAINER, target);
+            TargetNode targetNode = new TargetNode(new JDPNodeType(), target);
             root.addChildNode(targetNode);
         }
         return root;
+    }
+
+    public static class JDPNodeType implements NodeType {
+
+        public static final String KIND = "JVM";
+
+        @Override
+        public String getKind() {
+            return KIND;
+        }
+
+        @Override
+        public int ordinal() {
+            return 0;
+        }
     }
 }

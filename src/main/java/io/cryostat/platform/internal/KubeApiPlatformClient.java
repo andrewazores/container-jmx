@@ -44,11 +44,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import io.cryostat.core.log.Logger;
 import io.cryostat.core.net.JFRConnectionToolkit;
 import io.cryostat.core.net.discovery.JvmDiscoveryClient.EventKind;
+import io.cryostat.net.AbstractNode.BaseNodeType;
 import io.cryostat.net.AbstractNode.NodeType;
 import io.cryostat.net.EnvironmentNode;
 import io.cryostat.net.TargetNode;
@@ -70,7 +72,7 @@ import io.fabric8.kubernetes.client.Watcher;
 import io.fabric8.kubernetes.client.WatcherException;
 import org.apache.commons.lang3.tuple.Pair;
 
-class KubeApiPlatformClient extends AbstractPlatformClient {
+public class KubeApiPlatformClient extends AbstractPlatformClient {
 
     private final KubernetesClient k8sClient;
     private final Lazy<JFRConnectionToolkit> connectionToolkit;
@@ -167,7 +169,7 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
         // synchronization so that the owner reference chase-up from each Endpoints object can be
         // done in parallel, since these each involve multiple network requests
         try {
-            EnvironmentNode nsNode = new EnvironmentNode(namespace, NodeType.NAMESPACE);
+            EnvironmentNode nsNode = new EnvironmentNode(namespace, KubernetesNodeType.NAMESPACE);
             k8sClient
                     .endpoints()
                     .inNamespace(namespace)
@@ -189,7 +191,9 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
                                                 });
                             });
 
-            return nsNode;
+            EnvironmentNode realmNode = new EnvironmentNode("KubernetesApi", BaseNodeType.REALM);
+            realmNode.addChildNode(nsNode);
+            return realmNode;
         } catch (Exception e) {
             logger.warn(e);
             return null;
@@ -208,13 +212,13 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
         }
         String targetKind = target.getKind();
         String targetName = target.getName();
-        NodeType targetType = NodeType.fromKubernetesKind(targetKind);
-        if (targetType == NodeType.POD) {
+        KubernetesNodeType targetType = KubernetesNodeType.fromKubernetesKind(targetKind);
+        if (targetType == KubernetesNodeType.POD) {
             // if the Endpoint points to a Pod, chase the owner chain up as far as possible, then
             // add that to the Namespace
-            EnvironmentNode pod = new EnvironmentNode(targetName, NodeType.POD);
+            EnvironmentNode pod = new EnvironmentNode(targetName, KubernetesNodeType.POD);
             getServiceRefs(endpoint).stream()
-                    .map(serviceRef -> new TargetNode(NodeType.ENDPOINT, serviceRef))
+                    .map(serviceRef -> new TargetNode(KubernetesNodeType.ENDPOINT, serviceRef))
                     .forEach(pod::addChildNode);
 
             Map<Pair<String, String>, EnvironmentNode> nodeCache = new HashMap<>();
@@ -232,7 +236,7 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
             // if the Endpoint points to something else(?) than a Pod, just add the target straight
             // to the Namespace
             getServiceRefs(endpoint).stream()
-                    .map(serviceRef -> new TargetNode(NodeType.ENDPOINT, serviceRef))
+                    .map(serviceRef -> new TargetNode(KubernetesNodeType.ENDPOINT, serviceRef))
                     .forEach(nsNode::addChildNode);
         }
     }
@@ -241,7 +245,11 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
             EnvironmentNode child, Map<Pair<String, String>, EnvironmentNode> nodeCache) {
         List<? extends HasMetadata> refs;
         try {
-            refs = child.getNodeType().getGetterFunction().apply(k8sClient).apply(namespace);
+            refs =
+                    ((KubernetesNodeType) child.getNodeType())
+                            .getGetterFunction()
+                            .apply(k8sClient)
+                            .apply(namespace);
         } catch (KubernetesClientException kce) {
             logger.error(kce);
             return null;
@@ -262,7 +270,7 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
         // Take first "expected" owner Kind from NodeTypes, or if none, simply use the first owner
         OwnerReference owner =
                 owners.stream()
-                        .filter(o -> NodeType.fromKubernetesKind(o.getKind()) != null)
+                        .filter(o -> KubernetesNodeType.fromKubernetesKind(o.getKind()) != null)
                         .findFirst()
                         .orElse(owners.get(0));
         String ownerKind = owner.getKind();
@@ -271,7 +279,8 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
         return nodeCache.computeIfAbsent(
                 cacheKey,
                 k -> {
-                    NodeType ownerType = NodeType.fromKubernetesKind(k.getLeft());
+                    KubernetesNodeType ownerType =
+                            KubernetesNodeType.fromKubernetesKind(k.getLeft());
                     if (ownerType == null) {
                         return null;
                     }
@@ -332,5 +341,61 @@ class KubeApiPlatformClient extends AbstractPlatformClient {
                         })
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
+    }
+
+    public enum KubernetesNodeType implements NodeType {
+        NAMESPACE("Namespace"),
+        STATEFULSET(
+                "StatefulSet", c -> n -> c.apps().statefulSets().inNamespace(n).list().getItems()),
+        DAEMONSET("DaemonSet", c -> n -> c.apps().daemonSets().inNamespace(n).list().getItems()),
+        DEPLOYMENT("Deployment", c -> n -> c.apps().deployments().inNamespace(n).list().getItems()),
+        DEPLOYMENTCONFIG("DeploymentConfig"),
+        REPLICASET("ReplicaSet", c -> n -> c.apps().replicaSets().inNamespace(n).list().getItems()),
+        REPLICATIONCONTROLLER(
+                "ReplicationController",
+                c -> n -> c.replicationControllers().inNamespace(n).list().getItems()),
+        SERVICE("Service", c -> n -> c.services().inNamespace(n).list().getItems()),
+        INGRESS("Ingress", c -> n -> c.network().ingress().inNamespace(n).list().getItems()),
+        ROUTE("Route"),
+        POD("Pod", c -> n -> c.pods().inNamespace(n).list().getItems()),
+        ENDPOINT("Endpoint"),
+        ;
+
+        private final String kubernetesKind;
+        private final transient Function<
+                        KubernetesClient, Function<String, List<? extends HasMetadata>>>
+                getFn;
+
+        KubernetesNodeType(String kubernetesKind) {
+            this(kubernetesKind, client -> namespace -> List.of());
+        }
+
+        KubernetesNodeType(
+                String kubernetesKind,
+                Function<KubernetesClient, Function<String, List<? extends HasMetadata>>> getFn) {
+            this.kubernetesKind = kubernetesKind;
+            this.getFn = getFn;
+        }
+
+        public String getKind() {
+            return kubernetesKind;
+        }
+
+        public Function<KubernetesClient, Function<String, List<? extends HasMetadata>>>
+                getGetterFunction() {
+            return getFn;
+        }
+
+        public static KubernetesNodeType fromKubernetesKind(String kubernetesKind) {
+            if (kubernetesKind == null) {
+                return null;
+            }
+            for (KubernetesNodeType nt : values()) {
+                if (kubernetesKind.equalsIgnoreCase(nt.kubernetesKind)) {
+                    return nt;
+                }
+            }
+            return null;
+        }
     }
 }

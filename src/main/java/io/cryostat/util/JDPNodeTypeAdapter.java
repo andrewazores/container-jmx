@@ -35,46 +35,30 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package io.cryostat.net;
+package io.cryostat.util;
 
-import java.util.Collections;
-import java.util.Map;
+import java.io.IOException;
 
-import io.cryostat.platform.ServiceRef;
+import io.cryostat.platform.internal.DefaultPlatformClient;
+import io.cryostat.platform.internal.DefaultPlatformClient.JDPNodeType;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import com.google.gson.TypeAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 
-public class TargetNode extends AbstractNode {
-    @SuppressFBWarnings("URF_UNREAD_FIELD")
-    private final ServiceRef target;
+public class JDPNodeTypeAdapter extends TypeAdapter<JDPNodeType> {
 
-    public TargetNode(NodeType nodeType, ServiceRef target) {
-        super(target.getServiceUri().toString(), nodeType, Collections.emptyMap());
-        this.target = target;
-    }
-
-    public TargetNode(NodeType nodeType, ServiceRef target, Map<String, String> labels) {
-        super(target.getServiceUri().toString(), nodeType, labels);
-        this.target = target;
+    @Override
+    public JDPNodeType read(JsonReader reader) throws IOException {
+        String token = reader.nextString();
+        if (DefaultPlatformClient.NODE_TYPE.getKind().equalsIgnoreCase(token)) {
+            return DefaultPlatformClient.NODE_TYPE;
+        }
+        return null;
     }
 
     @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = super.hashCode();
-        result = prime * result + ((target == null) ? 0 : target.hashCode());
-        return result;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (!super.equals(obj)) return false;
-        if (getClass() != obj.getClass()) return false;
-        TargetNode other = (TargetNode) obj;
-        if (target == null) {
-            if (other.target != null) return false;
-        } else if (!target.equals(other.target)) return false;
-        return true;
+    public void write(JsonWriter writer, JDPNodeType nodeType) throws IOException {
+        writer.value(nodeType.getKind());
     }
 }

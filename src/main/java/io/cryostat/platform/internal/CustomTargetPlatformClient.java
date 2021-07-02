@@ -53,6 +53,7 @@ import javax.inject.Named;
 import io.cryostat.MainModule;
 import io.cryostat.core.net.discovery.JvmDiscoveryClient.EventKind;
 import io.cryostat.core.sys.FileSystem;
+import io.cryostat.net.AbstractNode.BaseNodeType;
 import io.cryostat.net.AbstractNode.NodeType;
 import io.cryostat.net.EnvironmentNode;
 import io.cryostat.net.TargetNode;
@@ -62,6 +63,8 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 public class CustomTargetPlatformClient extends AbstractPlatformClient {
+
+    public static final CustomTargetNodeType NODE_TYPE = new CustomTargetNodeType();
 
     static final String SAVEFILE_NAME = "custom_targets.json";
 
@@ -136,9 +139,28 @@ public class CustomTargetPlatformClient extends AbstractPlatformClient {
     @Override
     public EnvironmentNode getTargetEnvironment() {
         EnvironmentNode customTargetsNode =
-                new EnvironmentNode("Custom Targets", NodeType.NAMESPACE);
+                new EnvironmentNode("Custom Targets", BaseNodeType.REALM);
         targets.forEach(
-                sr -> customTargetsNode.addChildNode(new TargetNode(NodeType.CONTAINER, sr)));
+                sr ->
+                        customTargetsNode.addChildNode(
+                                new TargetNode(new CustomTargetNodeType(), sr)));
         return customTargetsNode;
+    }
+
+    public static class CustomTargetNodeType implements NodeType {
+
+        private CustomTargetNodeType() {}
+
+        public static final String KIND = "CustomTarget";
+
+        @Override
+        public String getKind() {
+            return KIND;
+        }
+
+        @Override
+        public int ordinal() {
+            return 0;
+        }
     }
 }

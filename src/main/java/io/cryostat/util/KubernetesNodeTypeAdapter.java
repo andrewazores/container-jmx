@@ -35,46 +35,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package io.cryostat.net;
+package io.cryostat.util;
 
-import java.util.Collections;
-import java.util.Map;
+import java.io.IOException;
 
-import io.cryostat.platform.ServiceRef;
+import io.cryostat.platform.internal.KubeApiPlatformClient.KubernetesNodeType;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import com.google.gson.TypeAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 
-public class TargetNode extends AbstractNode {
-    @SuppressFBWarnings("URF_UNREAD_FIELD")
-    private final ServiceRef target;
+public class KubernetesNodeTypeAdapter extends TypeAdapter<KubernetesNodeType> {
 
-    public TargetNode(NodeType nodeType, ServiceRef target) {
-        super(target.getServiceUri().toString(), nodeType, Collections.emptyMap());
-        this.target = target;
-    }
-
-    public TargetNode(NodeType nodeType, ServiceRef target, Map<String, String> labels) {
-        super(target.getServiceUri().toString(), nodeType, labels);
-        this.target = target;
+    @Override
+    public KubernetesNodeType read(JsonReader reader) throws IOException {
+        String token = reader.nextString();
+        return KubernetesNodeType.fromKubernetesKind(token);
     }
 
     @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = super.hashCode();
-        result = prime * result + ((target == null) ? 0 : target.hashCode());
-        return result;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (!super.equals(obj)) return false;
-        if (getClass() != obj.getClass()) return false;
-        TargetNode other = (TargetNode) obj;
-        if (target == null) {
-            if (other.target != null) return false;
-        } else if (!target.equals(other.target)) return false;
-        return true;
+    public void write(JsonWriter writer, KubernetesNodeType nodeType) throws IOException {
+        writer.value(nodeType.getKind());
     }
 }

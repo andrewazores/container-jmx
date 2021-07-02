@@ -47,7 +47,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import io.cryostat.messaging.notifications.NotificationFactory;
-import io.cryostat.net.AbstractNode.NodeType;
+import io.cryostat.net.AbstractNode.BaseNodeType;
 import io.cryostat.net.EnvironmentNode;
 import io.cryostat.platform.PlatformClient;
 import io.cryostat.platform.ServiceRef;
@@ -120,7 +120,7 @@ public class MergingPlatformClient implements PlatformClient, Consumer<TargetDis
 
     @Override
     public EnvironmentNode getTargetEnvironment() {
-        EnvironmentNode universe = new EnvironmentNode("Universe", NodeType.UNIVERSE);
+        EnvironmentNode universe = new EnvironmentNode("Universe", BaseNodeType.UNIVERSE);
         this.clients.forEach(client -> universe.addChildNode(client.getTargetEnvironment()));
         return universe;
     }

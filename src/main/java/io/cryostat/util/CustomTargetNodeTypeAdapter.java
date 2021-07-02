@@ -39,22 +39,27 @@ package io.cryostat.util;
 
 import java.io.IOException;
 
-import io.cryostat.net.AbstractNode;
+import io.cryostat.net.AbstractNode.NodeType;
+import io.cryostat.platform.internal.CustomTargetPlatformClient;
+import io.cryostat.platform.internal.CustomTargetPlatformClient.CustomTargetNodeType;
 
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
-public class NodeTypeAdapter extends TypeAdapter<AbstractNode.NodeType> {
+public class CustomTargetNodeTypeAdapter extends TypeAdapter<NodeType> {
 
     @Override
-    public AbstractNode.NodeType read(JsonReader reader) throws IOException {
+    public CustomTargetNodeType read(JsonReader reader) throws IOException {
         String token = reader.nextString();
-        return AbstractNode.NodeType.fromKubernetesKind(token);
+        if (CustomTargetPlatformClient.NODE_TYPE.getKind().equals(token)) {
+            return CustomTargetPlatformClient.NODE_TYPE;
+        }
+        return null;
     }
 
     @Override
-    public void write(JsonWriter writer, AbstractNode.NodeType nodeType) throws IOException {
+    public void write(JsonWriter writer, NodeType nodeType) throws IOException {
         writer.value(nodeType.getKind());
     }
 }
