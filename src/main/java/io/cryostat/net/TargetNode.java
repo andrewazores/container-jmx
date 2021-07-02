@@ -60,4 +60,29 @@ public class TargetNode extends AbstractNode {
         super(target.getAlias().orElse(target.getServiceUri().toString()), nodeType, labels);
         this.target = target;
     }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = super.hashCode();
+        result = prime * result + ((target == null) ? 0 : target.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (!super.equals(obj))
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        TargetNode other = (TargetNode) obj;
+        if (target == null) {
+            if (other.target != null)
+                return false;
+        } else if (!target.equals(other.target))
+            return false;
+        return true;
+    }
 }

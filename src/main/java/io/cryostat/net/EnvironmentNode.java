@@ -61,31 +61,6 @@ public class EnvironmentNode extends AbstractNode implements Comparable<Environm
         else return -1;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (o == null) return false;
-        if (this == o) return true;
-        if (o instanceof EnvironmentNode) {
-            if (((EnvironmentNode) o).getNodeType() != this.nodeType) return false;
-            String objectName = ((EnvironmentNode) o).getLabels().get("name");
-            if (!objectName.equals(this.labels.get("name"))) return false;
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    @Override
-    public int hashCode() {
-        int code = 0;
-        String name = this.labels.get("name");
-        if (name != null) {
-            code += name.hashCode();
-        }
-        code += this.nodeType.ordinal();
-        return code;
-    }
-
     public boolean hasChildren() {
         return !children.isEmpty();
     }
@@ -98,5 +73,30 @@ public class EnvironmentNode extends AbstractNode implements Comparable<Environm
         if (child != null) {
             this.children.add(child);
         }
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = super.hashCode();
+        result = prime * result + ((children == null) ? 0 : children.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (!super.equals(obj))
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        EnvironmentNode other = (EnvironmentNode) obj;
+        if (children == null) {
+            if (other.children != null)
+                return false;
+        } else if (!children.equals(other.children))
+            return false;
+        return true;
     }
 }
