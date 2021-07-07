@@ -216,7 +216,20 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
         if (targetType == KubernetesNodeType.POD) {
             // if the Endpoint points to a Pod, chase the owner chain up as far as possible, then
             // add that to the Namespace
-            EnvironmentNode pod = new EnvironmentNode(targetName, KubernetesNodeType.POD);
+            EnvironmentNode pod;
+
+            HasMetadata podRef =
+                KubernetesNodeType.POD
+                .getQueryFunction()
+                .apply(k8sClient)
+                .apply(namespace)
+                .apply(targetName);
+            if (podRef != null) {
+                pod = new EnvironmentNode(targetName, KubernetesNodeType.POD,
+                        podRef.getMetadata().getLabels());
+            } else {
+                pod = new EnvironmentNode(targetName, KubernetesNodeType.POD);
+            }
             getServiceRefs(endpoint).stream()
                     .map(serviceRef -> new TargetNode(KubernetesNodeType.ENDPOINT, serviceRef))
                     .forEach(pod::addChildNode);
