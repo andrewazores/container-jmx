@@ -327,6 +327,8 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
                 .map(
                         addr -> {
                             try {
+                                ObjectReference target = addr.getTargetRef();
+                                String targetName = target.getName();
                                 ServiceRef serviceRef =
                                         new ServiceRef(
                                                 URIUtil.convert(
@@ -335,7 +337,24 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
                                                                 .createServiceURL(
                                                                         addr.getIp(),
                                                                         port.getPort())),
-                                                addr.getTargetRef().getName());
+                                                targetName);
+
+                                String targetKind = target.getKind();
+                                KubernetesNodeType targetType =
+                                        KubernetesNodeType.fromKubernetesKind(targetKind);
+                                if (targetType == KubernetesNodeType.POD) {
+                                    HasMetadata podRef =
+                                            KubernetesNodeType.POD
+                                                    .getQueryFunction()
+                                                    .apply(k8sClient)
+                                                    .apply(namespace)
+                                                    .apply(targetName);
+                                    if (podRef != null) {
+                                        serviceRef.setLabels(podRef.getMetadata().getLabels());
+                                        serviceRef.setPlatformAnnotations(
+                                                podRef.getMetadata().getAnnotations());
+                                    }
+                                }
                                 serviceRef.setCryostatAnnotations(
                                         Map.of(
                                                 AnnotationKey.HOST, addr.getIp(),
