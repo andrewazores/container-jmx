@@ -169,6 +169,7 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
         // synchronization so that the owner reference chase-up from each Endpoints object can be
         // done in parallel, since these each involve multiple network requests
         try {
+            Map<Pair<String, String>, EnvironmentNode> nodeCache = new HashMap<>();
             EnvironmentNode nsNode = new EnvironmentNode(namespace, KubernetesNodeType.NAMESPACE);
             k8sClient
                     .endpoints()
@@ -186,7 +187,7 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
                                                                     addr -> {
                                                                         buildSubsetOwnerChain(
                                                                                 nsNode, endpoint,
-                                                                                addr);
+                                                                                addr, nodeCache);
                                                                     });
                                                 });
                             });
@@ -201,7 +202,10 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
     }
 
     private void buildSubsetOwnerChain(
-            EnvironmentNode nsNode, Endpoints endpoint, EndpointAddress addr) {
+            EnvironmentNode nsNode,
+            Endpoints endpoint,
+            EndpointAddress addr,
+            Map<Pair<String, String>, EnvironmentNode> nodeCache) {
         ObjectReference target = addr.getTargetRef();
         if (target == null) {
             logger.error(
@@ -219,22 +223,25 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
             EnvironmentNode pod;
 
             HasMetadata podRef =
-                KubernetesNodeType.POD
-                .getQueryFunction()
-                .apply(k8sClient)
-                .apply(namespace)
-                .apply(targetName);
+                    KubernetesNodeType.POD
+                            .getQueryFunction()
+                            .apply(k8sClient)
+                            .apply(namespace)
+                            .apply(targetName);
             if (podRef != null) {
-                pod = new EnvironmentNode(targetName, KubernetesNodeType.POD,
-                        podRef.getMetadata().getLabels());
+                pod =
+                        new EnvironmentNode(
+                                targetName,
+                                KubernetesNodeType.POD,
+                                podRef.getMetadata().getLabels());
             } else {
                 pod = new EnvironmentNode(targetName, KubernetesNodeType.POD);
             }
+            nodeCache.put(Pair.of(targetKind, targetName), pod);
             getServiceRefs(endpoint).stream()
                     .map(serviceRef -> new TargetNode(KubernetesNodeType.ENDPOINT, serviceRef))
                     .forEach(pod::addChildNode);
 
-            Map<Pair<String, String>, EnvironmentNode> nodeCache = new HashMap<>();
             EnvironmentNode node = pod;
             while (true) {
                 EnvironmentNode owner = getOrCreateOwnerNode(node, nodeCache);
