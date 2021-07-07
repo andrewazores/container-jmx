@@ -280,7 +280,23 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
                     if (ownerType == null) {
                         return null;
                     }
-                    return new EnvironmentNode(k.getRight(), ownerType);
+                    EnvironmentNode node;
+                    HasMetadata ownerRef =
+                            ownerType
+                                    .getQueryFunction()
+                                    .apply(k8sClient)
+                                    .apply(namespace)
+                                    .apply(ownerName);
+                    if (ownerRef != null) {
+                        node =
+                                new EnvironmentNode(
+                                        k.getRight(),
+                                        ownerType,
+                                        ownerRef.getMetadata().getLabels());
+                    } else {
+                        node = new EnvironmentNode(k.getRight(), ownerType);
+                    }
+                    return node;
                 });
     }
 
