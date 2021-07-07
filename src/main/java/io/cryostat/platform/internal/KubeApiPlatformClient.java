@@ -220,24 +220,30 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
         if (targetType == KubernetesNodeType.POD) {
             // if the Endpoint points to a Pod, chase the owner chain up as far as possible, then
             // add that to the Namespace
-            EnvironmentNode pod;
 
-            HasMetadata podRef =
-                    KubernetesNodeType.POD
-                            .getQueryFunction()
-                            .apply(k8sClient)
-                            .apply(namespace)
-                            .apply(targetName);
-            if (podRef != null) {
-                pod =
-                        new EnvironmentNode(
-                                targetName,
-                                KubernetesNodeType.POD,
-                                podRef.getMetadata().getLabels());
-            } else {
-                pod = new EnvironmentNode(targetName, KubernetesNodeType.POD);
-            }
-            nodeCache.put(Pair.of(targetKind, targetName), pod);
+            Pair<String, String> cacheKey = Pair.of(targetKind, targetName);
+            EnvironmentNode pod =
+                    nodeCache.computeIfAbsent(
+                            cacheKey,
+                            k -> {
+                                EnvironmentNode node;
+                                HasMetadata podRef =
+                                        targetType
+                                                .getQueryFunction()
+                                                .apply(k8sClient)
+                                                .apply(namespace)
+                                                .apply(targetName);
+                                if (podRef != null) {
+                                    node =
+                                            new EnvironmentNode(
+                                                    k.getRight(),
+                                                    targetType,
+                                                    podRef.getMetadata().getLabels());
+                                } else {
+                                    node = new EnvironmentNode(k.getRight(), targetType);
+                                }
+                                return node;
+                            });
             getServiceRefs(endpoint).stream()
                     .map(serviceRef -> new TargetNode(KubernetesNodeType.ENDPOINT, serviceRef))
                     .forEach(pod::addChildNode);
