@@ -137,7 +137,7 @@ public class CustomTargetPlatformClient extends AbstractPlatformClient {
     }
 
     @Override
-    public EnvironmentNode getTargetEnvironment() {
+    public EnvironmentNode getDiscoveryTree() {
         EnvironmentNode customTargetsNode =
                 new EnvironmentNode("Custom Targets", BaseNodeType.REALM);
         targets.forEach(

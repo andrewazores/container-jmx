@@ -163,7 +163,7 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
     }
 
     @Override
-    public EnvironmentNode getTargetEnvironment() {
+    public EnvironmentNode getDiscoveryTree() {
         // TODO refactor and extract this logic to a separate class. This class should maintain some
         // of the intermediate results as fields (ex. node cache and final nsNode) with
         // synchronization so that the owner reference chase-up from each Endpoints object can be

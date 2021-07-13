@@ -52,5 +52,5 @@ public interface PlatformClient {
 
     void removeTargetDiscoveryListener(Consumer<TargetDiscoveryEvent> listener);
 
-    EnvironmentNode getTargetEnvironment();
+    EnvironmentNode getDiscoveryTree();
 }

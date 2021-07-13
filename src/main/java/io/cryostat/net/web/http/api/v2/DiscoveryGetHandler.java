@@ -48,12 +48,12 @@ import io.cryostat.platform.overview.EnvironmentNode;
 import com.google.gson.Gson;
 import io.vertx.core.http.HttpMethod;
 
-class TargetEnvironmentGetHandler extends AbstractV2RequestHandler<EnvironmentNode> {
+class DiscoveryGetHandler extends AbstractV2RequestHandler<EnvironmentNode> {
 
     private final PlatformClient platformClient;
 
     @Inject
-    TargetEnvironmentGetHandler(AuthManager auth, PlatformClient platformClient, Gson gson) {
+    DiscoveryGetHandler(AuthManager auth, PlatformClient platformClient, Gson gson) {
         super(auth, gson);
         this.platformClient = platformClient;
     }
@@ -75,7 +75,7 @@ class TargetEnvironmentGetHandler extends AbstractV2RequestHandler<EnvironmentNo
 
     @Override
     public String path() {
-        return basePath() + "targetEnvironment";
+        return basePath() + "discovery";
     }
 
     @Override
@@ -91,6 +91,6 @@ class TargetEnvironmentGetHandler extends AbstractV2RequestHandler<EnvironmentNo
     @Override
     public IntermediateResponse<EnvironmentNode> handle(RequestParameters params) throws Exception {
         return new IntermediateResponse<EnvironmentNode>()
-                .body(platformClient.getTargetEnvironment());
+                .body(platformClient.getDiscoveryTree());
     }
 }

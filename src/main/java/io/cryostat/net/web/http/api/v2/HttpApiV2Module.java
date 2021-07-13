@@ -91,7 +91,7 @@ public abstract class HttpApiV2Module {
 
     @Binds
     @IntoSet
-    abstract RequestHandler bindTargetEnvironmentGetHandler(TargetEnvironmentGetHandler handler);
+    abstract RequestHandler bindDiscoveryGetHandler(DiscoveryGetHandler handler);
 
     @Provides
     @Singleton
