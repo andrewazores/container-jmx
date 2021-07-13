@@ -45,17 +45,18 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import dagger.Lazy;
 import io.cryostat.core.log.Logger;
 import io.cryostat.core.net.JFRConnectionToolkit;
 import io.cryostat.core.sys.Environment;
 import io.cryostat.platform.ServiceRef;
+import io.cryostat.platform.discovery.BaseNodeType;
+import io.cryostat.platform.discovery.EnvironmentNode;
+import io.cryostat.platform.discovery.NodeType;
+import io.cryostat.platform.discovery.TargetNode;
 import io.cryostat.platform.internal.DefaultPlatformClient.JDPNodeType;
-import io.cryostat.platform.overview.BaseNodeType;
-import io.cryostat.platform.overview.EnvironmentNode;
-import io.cryostat.platform.overview.NodeType;
-import io.cryostat.platform.overview.TargetNode;
 import io.cryostat.util.URIUtil;
+
+import dagger.Lazy;
 
 class KubeEnvPlatformClient extends AbstractPlatformClient {
 

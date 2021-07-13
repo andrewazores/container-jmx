@@ -35,34 +35,38 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package io.cryostat.platform.overview;
-
-import java.io.IOException;
+package io.cryostat.platform.discovery;
 
 import io.cryostat.util.PluggableTypeAdapter;
 
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonWriter;
+import dagger.Module;
+import dagger.Provides;
+import dagger.multibindings.IntoSet;
 
-public class BaseNodeTypeAdapter extends PluggableTypeAdapter<BaseNodeType> {
+@Module
+public abstract class PlatformDiscoveryModule {
 
-    public BaseNodeTypeAdapter() {
-        super(BaseNodeType.class);
+    @Provides
+    @IntoSet
+    static PluggableTypeAdapter<?> provideBaseNodeTypeAdapter() {
+        return new BaseNodeTypeAdapter();
     }
 
-    @Override
-    public BaseNodeType read(JsonReader reader) throws IOException {
-        String token = reader.nextString();
-        for (BaseNodeType nt : BaseNodeType.values()) {
-            if (nt.getKind().equals(token)) {
-                return nt;
-            }
-        }
-        return null;
+    @Provides
+    @IntoSet
+    static PluggableTypeAdapter<?> provideCustomTargetNodeTypeAdapter() {
+        return new CustomTargetNodeTypeAdapter();
     }
 
-    @Override
-    public void write(JsonWriter writer, BaseNodeType nodeType) throws IOException {
-        writer.value(nodeType.getKind());
+    @Provides
+    @IntoSet
+    static PluggableTypeAdapter<?> provideJDPNodeTypeAdapter() {
+        return new JDPNodeTypeAdapter();
+    }
+
+    @Provides
+    @IntoSet
+    static PluggableTypeAdapter<?> provideKubernetesNodeTypeAdapter() {
+        return new KubernetesNodeTypeAdapter();
     }
 }

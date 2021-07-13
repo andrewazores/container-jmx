@@ -35,24 +35,34 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package io.cryostat.platform.overview;
+package io.cryostat.platform.discovery;
 
-public enum BaseNodeType implements NodeType {
-    // represents the entire deployment scenario Cryostat finds itself in
-    UNIVERSE("Universe"),
-    // represents a division of the deployment scenario - the universe may consist of a
-    // Kubernetes Realm and a JDP Realm, for example
-    REALM("Realm"),
-    ;
+import java.io.IOException;
 
-    private final String kind;
+import io.cryostat.util.PluggableTypeAdapter;
 
-    BaseNodeType(String kind) {
-        this.kind = kind;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
+
+public class BaseNodeTypeAdapter extends PluggableTypeAdapter<BaseNodeType> {
+
+    public BaseNodeTypeAdapter() {
+        super(BaseNodeType.class);
     }
 
     @Override
-    public String getKind() {
-        return kind;
+    public BaseNodeType read(JsonReader reader) throws IOException {
+        String token = reader.nextString();
+        for (BaseNodeType nt : BaseNodeType.values()) {
+            if (nt.getKind().equals(token)) {
+                return nt;
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public void write(JsonWriter writer, BaseNodeType nodeType) throws IOException {
+        writer.value(nodeType.getKind());
     }
 }

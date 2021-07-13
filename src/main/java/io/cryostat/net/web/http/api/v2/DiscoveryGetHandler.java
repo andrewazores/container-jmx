@@ -43,7 +43,7 @@ import io.cryostat.net.AuthManager;
 import io.cryostat.net.web.http.HttpMimeType;
 import io.cryostat.net.web.http.api.ApiVersion;
 import io.cryostat.platform.PlatformClient;
-import io.cryostat.platform.overview.EnvironmentNode;
+import io.cryostat.platform.discovery.EnvironmentNode;
 
 import com.google.gson.Gson;
 import io.vertx.core.http.HttpMethod;
@@ -90,7 +90,6 @@ class DiscoveryGetHandler extends AbstractV2RequestHandler<EnvironmentNode> {
 
     @Override
     public IntermediateResponse<EnvironmentNode> handle(RequestParameters params) throws Exception {
-        return new IntermediateResponse<EnvironmentNode>()
-                .body(platformClient.getDiscoveryTree());
+        return new IntermediateResponse<EnvironmentNode>().body(platformClient.getDiscoveryTree());
     }
 }

@@ -35,10 +35,46 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package io.cryostat.platform.overview;
+package io.cryostat.platform.discovery;
 
-public interface NodeType {
-    String getKind();
+import java.util.Collections;
+import java.util.Map;
 
-    int ordinal();
+import io.cryostat.platform.ServiceRef;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
+public class TargetNode extends AbstractNode {
+    @SuppressFBWarnings("URF_UNREAD_FIELD")
+    private final ServiceRef target;
+
+    public TargetNode(NodeType nodeType, ServiceRef target) {
+        super(target.getServiceUri().toString(), nodeType, Collections.emptyMap());
+        this.target = target;
+    }
+
+    public TargetNode(NodeType nodeType, ServiceRef target, Map<String, String> labels) {
+        super(target.getServiceUri().toString(), nodeType, labels);
+        this.target = target;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = super.hashCode();
+        result = prime * result + ((target == null) ? 0 : target.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (!super.equals(obj)) return false;
+        if (getClass() != obj.getClass()) return false;
+        TargetNode other = (TargetNode) obj;
+        if (target == null) {
+            if (other.target != null) return false;
+        } else if (!target.equals(other.target)) return false;
+        return true;
+    }
 }

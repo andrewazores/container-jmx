@@ -35,34 +35,30 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package io.cryostat.platform.overview;
+package io.cryostat.platform.discovery;
 
 import java.io.IOException;
 
-import io.cryostat.platform.internal.CustomTargetPlatformClient;
-import io.cryostat.platform.internal.CustomTargetPlatformClient.CustomTargetNodeType;
+import io.cryostat.platform.internal.KubeApiPlatformClient.KubernetesNodeType;
 import io.cryostat.util.PluggableTypeAdapter;
 
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
-public class CustomTargetNodeTypeAdapter extends PluggableTypeAdapter<CustomTargetNodeType> {
+public class KubernetesNodeTypeAdapter extends PluggableTypeAdapter<KubernetesNodeType> {
 
-    public CustomTargetNodeTypeAdapter() {
-        super(CustomTargetNodeType.class);
+    public KubernetesNodeTypeAdapter() {
+        super(KubernetesNodeType.class);
     }
 
     @Override
-    public CustomTargetNodeType read(JsonReader reader) throws IOException {
+    public KubernetesNodeType read(JsonReader reader) throws IOException {
         String token = reader.nextString();
-        if (CustomTargetPlatformClient.NODE_TYPE.getKind().equals(token)) {
-            return CustomTargetPlatformClient.NODE_TYPE;
-        }
-        return null;
+        return KubernetesNodeType.fromKubernetesKind(token);
     }
 
     @Override
-    public void write(JsonWriter writer, CustomTargetNodeType nodeType) throws IOException {
+    public void write(JsonWriter writer, KubernetesNodeType nodeType) throws IOException {
         writer.value(nodeType.getKind());
     }
 }

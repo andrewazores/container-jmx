@@ -54,10 +54,10 @@ import io.cryostat.MainModule;
 import io.cryostat.core.net.discovery.JvmDiscoveryClient.EventKind;
 import io.cryostat.core.sys.FileSystem;
 import io.cryostat.platform.ServiceRef;
-import io.cryostat.platform.overview.BaseNodeType;
-import io.cryostat.platform.overview.EnvironmentNode;
-import io.cryostat.platform.overview.NodeType;
-import io.cryostat.platform.overview.TargetNode;
+import io.cryostat.platform.discovery.BaseNodeType;
+import io.cryostat.platform.discovery.EnvironmentNode;
+import io.cryostat.platform.discovery.NodeType;
+import io.cryostat.platform.discovery.TargetNode;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;

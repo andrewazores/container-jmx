@@ -35,38 +35,51 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package io.cryostat.platform.overview;
+package io.cryostat.platform.discovery;
 
-import io.cryostat.util.PluggableTypeAdapter;
+import java.util.Collections;
+import java.util.Map;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
-import dagger.Module;
-import dagger.Provides;
-import dagger.multibindings.IntoSet;
+public class EnvironmentNode extends AbstractNode {
 
-@Module
-public abstract class PlatformOverviewModule {
+    private final SortedSet<AbstractNode> children;
 
-    @Provides
-    @IntoSet
-    static PluggableTypeAdapter<?> provideBaseNodeTypeAdapter() {
-        return new BaseNodeTypeAdapter();
+    public EnvironmentNode(String name, NodeType nodeType) {
+        this(name, nodeType, Collections.emptyMap());
     }
 
-    @Provides
-    @IntoSet
-    static PluggableTypeAdapter<?> provideCustomTargetNodeTypeAdapter() {
-        return new CustomTargetNodeTypeAdapter();
+    public EnvironmentNode(String name, NodeType nodeType, Map<String, String> labels) {
+        super(name, nodeType, labels);
+        this.children = new TreeSet<>();
     }
 
-    @Provides
-    @IntoSet
-    static PluggableTypeAdapter<?> provideJDPNodeTypeAdapter() {
-        return new JDPNodeTypeAdapter();
+    public SortedSet<AbstractNode> getChildren() {
+        return Collections.unmodifiableSortedSet(children);
     }
 
-    @Provides
-    @IntoSet
-    static PluggableTypeAdapter<?> provideKubernetesNodeTypeAdapter() {
-        return new KubernetesNodeTypeAdapter();
+    public void addChildNode(AbstractNode child) {
+        this.children.add(child);
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = super.hashCode();
+        result = prime * result + ((children == null) ? 0 : children.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (!super.equals(obj)) return false;
+        if (getClass() != obj.getClass()) return false;
+        EnvironmentNode other = (EnvironmentNode) obj;
+        if (children == null) {
+            if (other.children != null) return false;
+        } else if (!children.equals(other.children)) return false;
+        return true;
     }
 }

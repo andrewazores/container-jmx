@@ -50,8 +50,8 @@ import io.cryostat.messaging.notifications.NotificationFactory;
 import io.cryostat.platform.PlatformClient;
 import io.cryostat.platform.ServiceRef;
 import io.cryostat.platform.TargetDiscoveryEvent;
-import io.cryostat.platform.overview.BaseNodeType;
-import io.cryostat.platform.overview.EnvironmentNode;
+import io.cryostat.platform.discovery.BaseNodeType;
+import io.cryostat.platform.discovery.EnvironmentNode;
 
 public class MergingPlatformClient implements PlatformClient, Consumer<TargetDiscoveryEvent> {
 
