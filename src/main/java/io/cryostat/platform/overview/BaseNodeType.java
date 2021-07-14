@@ -39,7 +39,7 @@ package io.cryostat.platform.overview;
 
 public enum BaseNodeType implements NodeType {
     // represents the entire deployment scenario Cryostat finds itself in
-    UNIVERSE(""),
+    UNIVERSE("Universe"),
     // represents a division of the deployment scenario - the universe may consist of a
     // Kubernetes Realm and a JDP Realm, for example
     REALM("Realm"),
