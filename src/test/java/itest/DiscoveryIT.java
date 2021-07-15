@@ -112,7 +112,6 @@ class DiscoveryIT extends ExternalTargetsTest {
                         });
         V2Response<DiscoveryResult> actual = resp.get(REQUEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         MatcherAssert.assertThat(actual.meta.status, Matchers.equalTo("OK"));
-        System.out.println(gson.toJson(actual));
 
         // root node should be a Universe type
         Node rootNode = actual.data.result;
