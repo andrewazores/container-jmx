@@ -58,6 +58,10 @@ public class TargetNode extends AbstractNode {
         this.target = target;
     }
 
+    public ServiceRef getTarget() {
+        return target;
+    }
+
     @Override
     public int hashCode() {
         final int prime = 31;
