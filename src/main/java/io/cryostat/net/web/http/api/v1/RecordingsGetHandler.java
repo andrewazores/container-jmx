@@ -59,16 +59,13 @@ import io.vertx.ext.web.handler.impl.HttpStatusException;
 
 class RecordingsGetHandler extends AbstractAuthenticatedRequestHandler {
 
-    private final Path savedRecordingsPath;
     private final RecordingArchiveHelper recordingArchiveHelper;
 
     @Inject
     RecordingsGetHandler(
             AuthManager auth,
-            @Named(MainModule.RECORDINGS_PATH) Path savedRecordingsPath,
             RecordingArchiveHelper recordingArchiveHelper) {
         super(auth);
-        this.savedRecordingsPath = savedRecordingsPath;
         this.recordingArchiveHelper = recordingArchiveHelper;
     }
 
@@ -104,26 +101,7 @@ class RecordingsGetHandler extends AbstractAuthenticatedRequestHandler {
                             .create();
             ctx.response().end(gson.toJson(result));
         } catch (ArchivePathException e) {
-            switch (e.getMessage()) {
-                case "does not exist":
-                    throw new HttpStatusException(
-                            501,
-                            String.format(
-                                    "Archive path %s does not exist",
-                                    savedRecordingsPath.toString()));
-                case "is not readable":
-                    throw new HttpStatusException(
-                            501,
-                            String.format(
-                                    "Archive path %s is not readable",
-                                    savedRecordingsPath.toString()));
-                case "is not a directory":
-                    throw new HttpStatusException(
-                            501,
-                            String.format(
-                                    "Archive path %s is not a directory",
-                                    savedRecordingsPath.toString()));
-            }
+            throw new HttpStatusException(501, e.getMessage());
         }
     }
 }
