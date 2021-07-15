@@ -53,13 +53,13 @@ import io.cryostat.platform.discovery.BaseNodeType;
 import io.cryostat.platform.discovery.EnvironmentNode;
 import io.cryostat.platform.discovery.NodeType;
 import io.cryostat.platform.discovery.TargetNode;
-import io.cryostat.platform.internal.DefaultPlatformClient.JDPNodeType;
 import io.cryostat.util.URIUtil;
 
 import dagger.Lazy;
 
 class KubeEnvPlatformClient extends AbstractPlatformClient {
 
+    public static final KubernetesNodeType NODE_TYPE = new KubernetesNodeType();
     private static final Pattern SERVICE_ENV_PATTERN =
             Pattern.compile("([\\S]+)_PORT_([\\d]+)_TCP_ADDR");
     private final Lazy<JFRConnectionToolkit> connectionToolkit;
@@ -89,7 +89,7 @@ class KubeEnvPlatformClient extends AbstractPlatformClient {
         EnvironmentNode root = new EnvironmentNode("KubernetesEnv", BaseNodeType.REALM);
         List<ServiceRef> targets = listDiscoverableServices();
         for (ServiceRef target : targets) {
-            TargetNode targetNode = new TargetNode(new JDPNodeType(), target);
+            TargetNode targetNode = new TargetNode(NODE_TYPE, target);
             root.addChildNode(targetNode);
         }
         return root;

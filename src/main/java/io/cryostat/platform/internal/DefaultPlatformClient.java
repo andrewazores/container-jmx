@@ -122,7 +122,7 @@ public class DefaultPlatformClient extends AbstractPlatformClient
         EnvironmentNode root = new EnvironmentNode("JDP", BaseNodeType.REALM);
         List<ServiceRef> targets = listDiscoverableServices();
         for (ServiceRef target : targets) {
-            TargetNode targetNode = new TargetNode(new JDPNodeType(), target);
+            TargetNode targetNode = new TargetNode(NODE_TYPE, target);
             root.addChildNode(targetNode);
         }
         return root;

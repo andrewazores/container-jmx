@@ -140,10 +140,7 @@ public class CustomTargetPlatformClient extends AbstractPlatformClient {
     public EnvironmentNode getDiscoveryTree() {
         EnvironmentNode customTargetsNode =
                 new EnvironmentNode("Custom Targets", BaseNodeType.REALM);
-        targets.forEach(
-                sr ->
-                        customTargetsNode.addChildNode(
-                                new TargetNode(new CustomTargetNodeType(), sr)));
+        targets.forEach(sr -> customTargetsNode.addChildNode(new TargetNode(NODE_TYPE, sr)));
         return customTargetsNode;
     }
 
