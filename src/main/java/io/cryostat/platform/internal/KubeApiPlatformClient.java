@@ -243,9 +243,11 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
                                     return Pair.of(podRef, node);
                                 });
             }
-            getServiceRefs(endpoint).stream()
-                    .map(serviceRef -> new TargetNode(KubernetesNodeType.ENDPOINT, serviceRef))
-                    .forEach(node -> pod.getRight().addChildNode(node));
+            synchronized (pod) {
+                getServiceRefs(endpoint).stream()
+                        .map(serviceRef -> new TargetNode(KubernetesNodeType.ENDPOINT, serviceRef))
+                        .forEach(node -> pod.getRight().addChildNode(node));
+            }
 
             Pair<HasMetadata, EnvironmentNode> node = pod;
             while (true) {
@@ -253,7 +255,10 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
                 if (owner == null) {
                     break;
                 }
-                owner.getRight().addChildNode(node.getRight());
+                EnvironmentNode ownerNode = owner.getRight();
+                synchronized (ownerNode) {
+                    ownerNode.addChildNode(node.getRight());
+                }
                 node = owner;
             }
             synchronized (nsNode) {
