@@ -78,6 +78,7 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
     private final Lazy<JFRConnectionToolkit> connectionToolkit;
     private final Logger logger;
     private final String namespace;
+    private final Map<Pair<String, String>, Pair<HasMetadata, EnvironmentNode>> discoveryNodeCache = new HashMap<>();
 
     KubeApiPlatformClient(
             String namespace,
@@ -164,12 +165,7 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
 
     @Override
     public EnvironmentNode getDiscoveryTree() {
-        // TODO refactor and extract this logic to a separate class. This class should maintain some
-        // of the intermediate results as fields (ex. node cache and final nsNode) with
-        // synchronization so that the owner reference chase-up from each Endpoints object can be
-        // done in parallel, since these each involve multiple network requests
         try {
-            Map<Pair<String, String>, EnvironmentNode> nodeCache = new HashMap<>();
             EnvironmentNode nsNode = new EnvironmentNode(namespace, KubernetesNodeType.NAMESPACE);
             k8sClient
                     .endpoints()
@@ -183,11 +179,12 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
                                         .forEach(
                                                 subset -> {
                                                     subset.getAddresses()
+                                                            .parallelStream()
                                                             .forEach(
                                                                     addr -> {
                                                                         buildSubsetOwnerChain(
                                                                                 nsNode, endpoint,
-                                                                                addr, nodeCache);
+                                                                                addr);
                                                                     });
                                                 });
                             });
@@ -198,14 +195,15 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
         } catch (Exception e) {
             logger.warn(e);
             return null;
+        } finally {
+            discoveryNodeCache.clear();
         }
     }
 
     private void buildSubsetOwnerChain(
             EnvironmentNode nsNode,
             Endpoints endpoint,
-            EndpointAddress addr,
-            Map<Pair<String, String>, EnvironmentNode> nodeCache) {
+            EndpointAddress addr) {
         ObjectReference target = addr.getTargetRef();
         if (target == null) {
             logger.error(
@@ -222,70 +220,64 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
             // add that to the Namespace
 
             Pair<String, String> cacheKey = Pair.of(targetKind, targetName);
-            EnvironmentNode pod =
-                    nodeCache.computeIfAbsent(
-                            cacheKey,
-                            k -> {
-                                EnvironmentNode node;
-                                HasMetadata podRef =
-                                        targetType
-                                                .getQueryFunction()
-                                                .apply(k8sClient)
-                                                .apply(namespace)
-                                                .apply(targetName);
-                                if (podRef != null) {
-                                    node =
-                                            new EnvironmentNode(
-                                                    k.getRight(),
-                                                    targetType,
-                                                    podRef.getMetadata().getLabels());
-                                } else {
-                                    node = new EnvironmentNode(k.getRight(), targetType);
-                                }
-                                return node;
-                            });
+            Pair<HasMetadata, EnvironmentNode> pod;
+            synchronized (discoveryNodeCache) {
+                pod = discoveryNodeCache.computeIfAbsent(
+                        cacheKey,
+                        k -> {
+                            EnvironmentNode node;
+                            HasMetadata podRef =
+                                    targetType
+                                            .getQueryFunction()
+                                            .apply(k8sClient)
+                                            .apply(namespace)
+                                            .apply(targetName);
+                            if (podRef != null) {
+                                node =
+                                        new EnvironmentNode(
+                                                k.getRight(),
+                                                targetType,
+                                                podRef.getMetadata().getLabels());
+                            } else {
+                                node = new EnvironmentNode(k.getRight(), targetType);
+                            }
+                            return Pair.of(podRef, node);
+                        });
+            }
             getServiceRefs(endpoint).stream()
                     .map(serviceRef -> new TargetNode(KubernetesNodeType.ENDPOINT, serviceRef))
-                    .forEach(pod::addChildNode);
+                    .forEach(node -> pod.getRight().addChildNode(node));
 
-            EnvironmentNode node = pod;
+            Pair<HasMetadata, EnvironmentNode> node = pod;
             while (true) {
-                EnvironmentNode owner = getOrCreateOwnerNode(node, nodeCache);
+                Pair<HasMetadata, EnvironmentNode> owner = getOrCreateOwnerNode(node);
                 if (owner == null) {
                     break;
                 }
-                owner.addChildNode(node);
+                owner.getRight().addChildNode(node.getRight());
                 node = owner;
             }
-            nsNode.addChildNode(node);
+            synchronized (nsNode) {
+                nsNode.addChildNode(node.getRight());
+            }
         } else {
             // if the Endpoint points to something else(?) than a Pod, just add the target straight
             // to the Namespace
-            getServiceRefs(endpoint).stream()
-                    .map(serviceRef -> new TargetNode(KubernetesNodeType.ENDPOINT, serviceRef))
-                    .forEach(nsNode::addChildNode);
+             synchronized (nsNode) {
+                 getServiceRefs(endpoint).stream()
+                         .map(serviceRef -> new TargetNode(KubernetesNodeType.ENDPOINT, serviceRef))
+                         .forEach(nsNode::addChildNode);
+             }
         }
     }
 
-    private EnvironmentNode getOrCreateOwnerNode(
-            EnvironmentNode child, Map<Pair<String, String>, EnvironmentNode> nodeCache) {
-        HasMetadata childRef;
-        try {
-            childRef =
-                    ((KubernetesNodeType) child.getNodeType())
-                            .getQueryFunction()
-                            .apply(k8sClient)
-                            .apply(namespace)
-                            .apply(child.getName());
-        } catch (KubernetesClientException kce) {
-            logger.error(kce);
-            return null;
-        }
+    private Pair<HasMetadata, EnvironmentNode> getOrCreateOwnerNode(Pair<HasMetadata, EnvironmentNode> child) {
+        HasMetadata childRef = child.getLeft();
         if (childRef == null) {
             logger.error(
                     "Could not locate node named {} of kind {} while traversing environment",
-                    child.getName(),
-                    child.getNodeType());
+                    child.getRight().getName(),
+                    child.getRight().getNodeType());
             return null;
         }
         List<OwnerReference> owners = childRef.getMetadata().getOwnerReferences();
@@ -298,32 +290,34 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
         String ownerKind = owner.getKind();
         String ownerName = owner.getName();
         Pair<String, String> cacheKey = Pair.of(ownerKind, ownerName);
-        return nodeCache.computeIfAbsent(
-                cacheKey,
-                k -> {
-                    KubernetesNodeType ownerType =
-                            KubernetesNodeType.fromKubernetesKind(k.getLeft());
-                    if (ownerType == null) {
-                        return null;
-                    }
-                    EnvironmentNode node;
-                    HasMetadata ownerRef =
-                            ownerType
-                                    .getQueryFunction()
-                                    .apply(k8sClient)
-                                    .apply(namespace)
-                                    .apply(ownerName);
-                    if (ownerRef != null) {
-                        node =
-                                new EnvironmentNode(
-                                        k.getRight(),
-                                        ownerType,
-                                        ownerRef.getMetadata().getLabels());
-                    } else {
-                        node = new EnvironmentNode(k.getRight(), ownerType);
-                    }
-                    return node;
-                });
+        synchronized (discoveryNodeCache) {
+            return discoveryNodeCache.computeIfAbsent(
+                    cacheKey,
+                    k -> {
+                        KubernetesNodeType ownerType =
+                                KubernetesNodeType.fromKubernetesKind(k.getLeft());
+                        if (ownerType == null) {
+                            return null;
+                        }
+                        EnvironmentNode node;
+                        HasMetadata ownerRef =
+                                ownerType
+                                        .getQueryFunction()
+                                        .apply(k8sClient)
+                                        .apply(namespace)
+                                        .apply(ownerName);
+                        if (ownerRef != null) {
+                            node =
+                                    new EnvironmentNode(
+                                            k.getRight(),
+                                            ownerType,
+                                            ownerRef.getMetadata().getLabels());
+                        } else {
+                            node = new EnvironmentNode(k.getRight(), ownerType);
+                        }
+                        return Pair.of(ownerRef, node);
+                    });
+        }
     }
 
     private boolean isCompatibleSubset(EndpointSubset subset) {
