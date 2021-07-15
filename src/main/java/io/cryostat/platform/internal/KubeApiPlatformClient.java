@@ -67,7 +67,6 @@ import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.ObjectReference;
 import io.fabric8.kubernetes.api.model.OwnerReference;
 import io.fabric8.kubernetes.client.KubernetesClient;
-import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.Watcher;
 import io.fabric8.kubernetes.client.WatcherException;
 import org.apache.commons.lang3.tuple.Pair;
@@ -78,7 +77,8 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
     private final Lazy<JFRConnectionToolkit> connectionToolkit;
     private final Logger logger;
     private final String namespace;
-    private final Map<Pair<String, String>, Pair<HasMetadata, EnvironmentNode>> discoveryNodeCache = new HashMap<>();
+    private final Map<Pair<String, String>, Pair<HasMetadata, EnvironmentNode>> discoveryNodeCache =
+            new HashMap<>();
 
     KubeApiPlatformClient(
             String namespace,
@@ -201,9 +201,7 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
     }
 
     private void buildSubsetOwnerChain(
-            EnvironmentNode nsNode,
-            Endpoints endpoint,
-            EndpointAddress addr) {
+            EnvironmentNode nsNode, Endpoints endpoint, EndpointAddress addr) {
         ObjectReference target = addr.getTargetRef();
         if (target == null) {
             logger.error(
@@ -222,27 +220,28 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
             Pair<String, String> cacheKey = Pair.of(targetKind, targetName);
             Pair<HasMetadata, EnvironmentNode> pod;
             synchronized (discoveryNodeCache) {
-                pod = discoveryNodeCache.computeIfAbsent(
-                        cacheKey,
-                        k -> {
-                            EnvironmentNode node;
-                            HasMetadata podRef =
-                                    targetType
-                                            .getQueryFunction()
-                                            .apply(k8sClient)
-                                            .apply(namespace)
-                                            .apply(targetName);
-                            if (podRef != null) {
-                                node =
-                                        new EnvironmentNode(
-                                                k.getRight(),
-                                                targetType,
-                                                podRef.getMetadata().getLabels());
-                            } else {
-                                node = new EnvironmentNode(k.getRight(), targetType);
-                            }
-                            return Pair.of(podRef, node);
-                        });
+                pod =
+                        discoveryNodeCache.computeIfAbsent(
+                                cacheKey,
+                                k -> {
+                                    EnvironmentNode node;
+                                    HasMetadata podRef =
+                                            targetType
+                                                    .getQueryFunction()
+                                                    .apply(k8sClient)
+                                                    .apply(namespace)
+                                                    .apply(targetName);
+                                    if (podRef != null) {
+                                        node =
+                                                new EnvironmentNode(
+                                                        k.getRight(),
+                                                        targetType,
+                                                        podRef.getMetadata().getLabels());
+                                    } else {
+                                        node = new EnvironmentNode(k.getRight(), targetType);
+                                    }
+                                    return Pair.of(podRef, node);
+                                });
             }
             getServiceRefs(endpoint).stream()
                     .map(serviceRef -> new TargetNode(KubernetesNodeType.ENDPOINT, serviceRef))
@@ -263,15 +262,16 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
         } else {
             // if the Endpoint points to something else(?) than a Pod, just add the target straight
             // to the Namespace
-             synchronized (nsNode) {
-                 getServiceRefs(endpoint).stream()
-                         .map(serviceRef -> new TargetNode(KubernetesNodeType.ENDPOINT, serviceRef))
-                         .forEach(nsNode::addChildNode);
-             }
+            synchronized (nsNode) {
+                getServiceRefs(endpoint).stream()
+                        .map(serviceRef -> new TargetNode(KubernetesNodeType.ENDPOINT, serviceRef))
+                        .forEach(nsNode::addChildNode);
+            }
         }
     }
 
-    private Pair<HasMetadata, EnvironmentNode> getOrCreateOwnerNode(Pair<HasMetadata, EnvironmentNode> child) {
+    private Pair<HasMetadata, EnvironmentNode> getOrCreateOwnerNode(
+            Pair<HasMetadata, EnvironmentNode> child) {
         HasMetadata childRef = child.getLeft();
         if (childRef == null) {
             logger.error(
