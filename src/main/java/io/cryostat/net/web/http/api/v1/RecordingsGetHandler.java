@@ -37,13 +37,10 @@
  */
 package io.cryostat.net.web.http.api.v1;
 
-import java.nio.file.Path;
 import java.util.List;
 
 import javax.inject.Inject;
-import javax.inject.Named;
 
-import io.cryostat.MainModule;
 import io.cryostat.net.AuthManager;
 import io.cryostat.net.web.http.AbstractAuthenticatedRequestHandler;
 import io.cryostat.net.web.http.api.ApiVersion;
@@ -52,7 +49,6 @@ import io.cryostat.rules.ArchivePathException;
 import io.cryostat.rules.ArchivedRecordingInfo;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.impl.HttpStatusException;
@@ -60,13 +56,14 @@ import io.vertx.ext.web.handler.impl.HttpStatusException;
 class RecordingsGetHandler extends AbstractAuthenticatedRequestHandler {
 
     private final RecordingArchiveHelper recordingArchiveHelper;
+    private final Gson gson;
 
     @Inject
     RecordingsGetHandler(
-            AuthManager auth,
-            RecordingArchiveHelper recordingArchiveHelper) {
+            AuthManager auth, RecordingArchiveHelper recordingArchiveHelper, Gson gson) {
         super(auth);
         this.recordingArchiveHelper = recordingArchiveHelper;
+        this.gson = gson;
     }
 
     @Override
@@ -93,12 +90,6 @@ class RecordingsGetHandler extends AbstractAuthenticatedRequestHandler {
     public void handleAuthenticated(RoutingContext ctx) throws Exception {
         try {
             List<ArchivedRecordingInfo> result = recordingArchiveHelper.getRecordings();
-            Gson gson =
-                    new GsonBuilder()
-                            .registerTypeAdapter(
-                                    ArchivedRecordingInfo.class,
-                                    new ArchivedRecordingInfo.ArchivedRecordingInfoSerializer())
-                            .create();
             ctx.response().end(gson.toJson(result));
         } catch (ArchivePathException e) {
             throw new HttpStatusException(501, e.getMessage());

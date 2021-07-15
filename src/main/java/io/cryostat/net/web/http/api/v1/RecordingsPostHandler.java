@@ -178,7 +178,8 @@ class RecordingsPostHandler extends AbstractAuthenticatedRequestHandler {
 
         ConnectionDescriptor connectionDescriptor = getConnectionDescriptorFromContext(ctx);
         Base32 base32 = new Base32();
-        final String encodedServiceUri = base32.encodeAsString(connectionDescriptor.getTargetId().getBytes());
+        final String encodedServiceUri =
+                base32.encodeAsString(connectionDescriptor.getTargetId().getBytes());
         final String basename = String.format("%s_%s_%s", targetName, recordingName, timestamp);
         final String uploadedFileName = upload.uploadedFileName();
         validateRecording(
@@ -245,7 +246,11 @@ class RecordingsPostHandler extends AbstractAuthenticatedRequestHandler {
     }
 
     private void saveRecording(
-            String encodedServiceUri, String basename, String tmpFile, int counter, Handler<AsyncResult<String>> handler) {
+            String encodedServiceUri,
+            String basename,
+            String tmpFile,
+            int counter,
+            Handler<AsyncResult<String>> handler) {
         // TODO byte-sized rename limit is arbitrary. Probably plenty since recordings
         // are also differentiated by second-resolution timestamp
         if (counter >= Byte.MAX_VALUE) {
@@ -269,7 +274,8 @@ class RecordingsPostHandler extends AbstractAuthenticatedRequestHandler {
                             }
 
                             if (res.result()) {
-                                saveRecording(encodedServiceUri, basename, tmpFile, counter + 1, handler);
+                                saveRecording(
+                                        encodedServiceUri, basename, tmpFile, counter + 1, handler);
                                 return;
                             }
 

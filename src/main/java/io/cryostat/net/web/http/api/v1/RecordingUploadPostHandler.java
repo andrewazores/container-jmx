@@ -42,7 +42,6 @@ import java.net.URL;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -65,8 +64,6 @@ import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.handler.impl.HttpStatusException;
 import io.vertx.ext.web.multipart.MultipartForm;
-
-import org.apache.commons.lang3.ObjectUtils.Null;
 import org.apache.commons.validator.routines.UrlValidator;
 
 class RecordingUploadPostHandler extends AbstractAuthenticatedRequestHandler {
@@ -186,14 +183,14 @@ class RecordingUploadPostHandler extends AbstractAuthenticatedRequestHandler {
                 break;
             }
         }
-        
+
         try {
             if (fs.isRegularFile(archivedRecording) && fs.isReadable(archivedRecording)) {
                 return Optional.of(archivedRecording);
             }
             return Optional.empty();
         } catch (InvalidPathException e) {
-            throw new HttpStatusException(400, e.getMessage(), e); 
+            throw new HttpStatusException(400, e.getMessage(), e);
         } catch (NullPointerException e) {
             throw new HttpStatusException(404, e.getMessage(), e);
         }

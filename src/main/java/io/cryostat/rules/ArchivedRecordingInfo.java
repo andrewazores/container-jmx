@@ -37,13 +37,6 @@
  */
 package io.cryostat.rules;
 
-import java.lang.reflect.Type;
-
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonSerializationContext;
-import com.google.gson.JsonSerializer;
-
 public class ArchivedRecordingInfo {
     private final String encodedServiceUri;
     private final String name;
@@ -72,19 +65,5 @@ public class ArchivedRecordingInfo {
 
     public String getDownloadUrl() {
         return this.downloadUrl;
-    }
-
-    public static class ArchivedRecordingInfoSerializer
-            implements JsonSerializer<ArchivedRecordingInfo> {
-        public JsonElement serialize(
-                ArchivedRecordingInfo archivedRecordingInfo,
-                Type typeOfArchivedRecordingInfo,
-                JsonSerializationContext context) {
-            JsonObject jsonObject = new JsonObject();
-            jsonObject.addProperty("name", archivedRecordingInfo.name);
-            jsonObject.addProperty("reportUrl", archivedRecordingInfo.reportUrl);
-            jsonObject.addProperty("downloadUrl", archivedRecordingInfo.downloadUrl);
-            return jsonObject;
-        }
     }
 }
