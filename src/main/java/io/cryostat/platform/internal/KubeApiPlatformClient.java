@@ -155,9 +155,7 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
     @Override
     public List<ServiceRef> listDiscoverableServices() {
         try {
-            return k8sClient.endpoints().inNamespace(namespace).list().getItems().stream()
-                    .flatMap(endpoints -> getServiceRefs(endpoints).stream())
-                    .collect(Collectors.toList());
+            return getAllServiceRefs();
         } catch (Exception e) {
             logger.warn(e);
             return Collections.emptyList();
@@ -174,21 +172,8 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
                     .list()
                     .getItems()
                     .parallelStream()
-                    .forEach(
-                            endpoint -> {
-                                endpoint.getSubsets().stream()
-                                        .filter(this::isCompatibleSubset)
-                                        .forEach(
-                                                subset -> {
-                                                    subset.getAddresses()
-                                                            .forEach(
-                                                                    addr -> {
-                                                                        buildSubsetOwnerChain(
-                                                                                nsNode, endpoint,
-                                                                                addr);
-                                                                    });
-                                                });
-                            });
+                    .flatMap(endpoints -> getTargetTuples(endpoints).stream())
+                    .forEach(tuple -> buildOwnerChain(nsNode, tuple));
 
             EnvironmentNode realmNode = new EnvironmentNode("KubernetesApi", BaseNodeType.REALM);
             realmNode.addChildNode(nsNode);
@@ -202,14 +187,15 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
         }
     }
 
-    private void buildSubsetOwnerChain(
-            EnvironmentNode nsNode, Endpoints endpoint, EndpointAddress addr) {
-        ObjectReference target = addr.getTargetRef();
+    private void buildOwnerChain(EnvironmentNode nsNode, TargetTuple targetTuple) {
+        ObjectReference target = targetTuple.addr.getTargetRef();
         if (target == null) {
             logger.error(
                     "Address {} for Endpoint {} had null target reference",
-                    addr.getIp() != null ? addr.getIp() : addr.getHostname(),
-                    endpoint.getMetadata().getName());
+                    targetTuple.addr.getIp() != null
+                            ? targetTuple.addr.getIp()
+                            : targetTuple.addr.getHostname(),
+                    targetTuple.objRef.getName());
             return;
         }
         String targetKind = target.getKind();
@@ -220,9 +206,10 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
 
             Pair<HasMetadata, EnvironmentNode> pod =
                     discoveryNodeCache.computeIfAbsent(cacheKey(target), this::queryForNode);
-            getServiceRefs(endpoint).stream()
-                    .map(serviceRef -> new TargetNode(KubernetesNodeType.ENDPOINT, serviceRef))
-                    .forEach(node -> pod.getRight().addChildNode(node));
+            pod.getRight()
+                    .addChildNode(
+                            new TargetNode(
+                                    KubernetesNodeType.ENDPOINT, targetTuple.toServiceRef()));
 
             Pair<HasMetadata, EnvironmentNode> node = pod;
             while (true) {
@@ -238,9 +225,8 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
         } else {
             // if the Endpoint points to something else(?) than a Pod, just add the target straight
             // to the Namespace
-            getServiceRefs(endpoint).stream()
-                    .map(serviceRef -> new TargetNode(KubernetesNodeType.ENDPOINT, serviceRef))
-                    .forEach(nsNode::addChildNode);
+            nsNode.addChildNode(
+                    new TargetNode(KubernetesNodeType.ENDPOINT, targetTuple.toServiceRef()));
         }
     }
 
@@ -293,73 +279,87 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
         }
     }
 
-    private boolean isCompatibleSubset(EndpointSubset subset) {
-        return subset.getPorts().stream().anyMatch(this::isCompatiblePort);
-    }
-
     private boolean isCompatiblePort(EndpointPort port) {
         return "jfr-jmx".equals(port.getName()) || 9091 == port.getPort();
     }
 
-    private List<ServiceRef> getServiceRefs(Endpoints endpoints) {
-        List<ServiceRef> refs = new ArrayList<>();
-        endpoints.getSubsets().stream()
-                .forEach(
-                        subset ->
-                                subset.getPorts().stream()
-                                        .filter(this::isCompatiblePort)
-                                        .forEach(
-                                                port ->
-                                                        refs.addAll(
-                                                                createServiceRefs(subset, port))));
-        return refs;
+    private List<ServiceRef> getAllServiceRefs() {
+        return k8sClient.endpoints().inNamespace(namespace).list().getItems().stream()
+                .flatMap(endpoints -> getServiceRefs(endpoints).stream())
+                .collect(Collectors.toList());
     }
 
-    private List<ServiceRef> createServiceRefs(EndpointSubset subset, EndpointPort port) {
-        return subset.getAddresses().stream()
-                .map(
-                        addr -> {
-                            try {
-                                ObjectReference target = addr.getTargetRef();
-                                Pair<HasMetadata, EnvironmentNode> node =
-                                        discoveryNodeCache.computeIfAbsent(
-                                                cacheKey(target), this::queryForNode);
-                                String targetName = target.getName();
-                                ServiceRef serviceRef =
-                                        new ServiceRef(
-                                                URIUtil.convert(
-                                                        connectionToolkit
-                                                                .get()
-                                                                .createServiceURL(
-                                                                        addr.getIp(),
-                                                                        port.getPort())),
-                                                targetName);
+    private List<TargetTuple> getTargetTuples(Endpoints endpoints) {
+        List<TargetTuple> tts = new ArrayList<>();
+        for (EndpointSubset subset : endpoints.getSubsets()) {
+            for (EndpointPort port : subset.getPorts()) {
+                if (!isCompatiblePort(port)) {
+                    continue;
+                }
+                for (EndpointAddress addr : subset.getAddresses()) {
+                    tts.add(new TargetTuple(addr.getTargetRef(), addr, port));
+                }
+            }
+        }
+        return tts;
+    }
 
-                                if (node.getRight().getNodeType() == KubernetesNodeType.POD) {
-                                    HasMetadata podRef = node.getLeft();
-                                    if (podRef != null) {
-                                        serviceRef.setLabels(podRef.getMetadata().getLabels());
-                                        serviceRef.setPlatformAnnotations(
-                                                podRef.getMetadata().getAnnotations());
-                                    }
-                                }
-                                serviceRef.setCryostatAnnotations(
-                                        Map.of(
-                                                AnnotationKey.HOST, addr.getIp(),
-                                                AnnotationKey.PORT,
-                                                        Integer.toString(port.getPort()),
-                                                AnnotationKey.NAMESPACE,
-                                                        addr.getTargetRef().getNamespace(),
-                                                AnnotationKey.POD_NAME,
-                                                        addr.getTargetRef().getName()));
-                                return serviceRef;
-                            } catch (Exception e) {
-                                logger.warn(e);
-                                return null;
-                            }
-                        })
+    private List<ServiceRef> getServiceRefs(Endpoints endpoints) {
+        return getTargetTuples(endpoints).stream()
+                .map(TargetTuple::toServiceRef)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
+    }
+
+    private class TargetTuple {
+        ObjectReference objRef;
+        EndpointAddress addr;
+        EndpointPort port;
+
+        TargetTuple(ObjectReference objRef, EndpointAddress addr, EndpointPort port) {
+            this.objRef = objRef;
+            this.addr = addr;
+            this.port = port;
+        }
+
+        ServiceRef toServiceRef() {
+            try {
+                ObjectReference target = objRef;
+                Pair<HasMetadata, EnvironmentNode> node =
+                        discoveryNodeCache.computeIfAbsent(
+                                cacheKey(target), KubeApiPlatformClient.this::queryForNode);
+                String targetName = target.getName();
+                ServiceRef serviceRef =
+                        new ServiceRef(
+                                URIUtil.convert(
+                                        connectionToolkit
+                                                .get()
+                                                .createServiceURL(addr.getIp(), port.getPort())),
+                                targetName);
+
+                if (node.getRight().getNodeType() == KubernetesNodeType.POD) {
+                    HasMetadata podRef = node.getLeft();
+                    if (podRef != null) {
+                        serviceRef.setLabels(podRef.getMetadata().getLabels());
+                        serviceRef.setPlatformAnnotations(podRef.getMetadata().getAnnotations());
+                    }
+                }
+                serviceRef.setCryostatAnnotations(
+                        Map.of(
+                                AnnotationKey.HOST,
+                                addr.getIp(),
+                                AnnotationKey.PORT,
+                                Integer.toString(port.getPort()),
+                                AnnotationKey.NAMESPACE,
+                                addr.getTargetRef().getNamespace(),
+                                AnnotationKey.POD_NAME,
+                                addr.getTargetRef().getName()));
+                return serviceRef;
+            } catch (Exception e) {
+                logger.warn(e);
+                return null;
+            }
+        }
     }
 
     public enum KubernetesNodeType implements NodeType {
@@ -429,6 +429,4 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
             return null;
         }
     }
-
-    private static class CacheKey extends Pair<String, String> {}
 }
