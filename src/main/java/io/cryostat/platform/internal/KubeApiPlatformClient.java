@@ -164,8 +164,10 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
 
     @Override
     public EnvironmentNode getDiscoveryTree() {
+        EnvironmentNode nsNode = new EnvironmentNode(namespace, KubernetesNodeType.NAMESPACE);
+        EnvironmentNode realmNode = new EnvironmentNode("KubernetesApi", BaseNodeType.REALM);
+        realmNode.addChildNode(nsNode);
         try {
-            EnvironmentNode nsNode = new EnvironmentNode(namespace, KubernetesNodeType.NAMESPACE);
             k8sClient
                     .endpoints()
                     .inNamespace(namespace)
@@ -174,17 +176,13 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
                     .parallelStream()
                     .flatMap(endpoints -> getTargetTuples(endpoints).stream())
                     .forEach(tuple -> buildOwnerChain(nsNode, tuple));
-
-            EnvironmentNode realmNode = new EnvironmentNode("KubernetesApi", BaseNodeType.REALM);
-            realmNode.addChildNode(nsNode);
-            return realmNode;
         } catch (Exception e) {
             logger.warn(e);
-            return null;
         } finally {
             discoveryNodeCache.clear();
             queryLocks.clear();
         }
+        return realmNode;
     }
 
     private void buildOwnerChain(EnvironmentNode nsNode, TargetTuple targetTuple) {
@@ -324,11 +322,10 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
 
         ServiceRef toServiceRef() {
             try {
-                ObjectReference target = objRef;
                 Pair<HasMetadata, EnvironmentNode> node =
                         discoveryNodeCache.computeIfAbsent(
-                                cacheKey(target), KubeApiPlatformClient.this::queryForNode);
-                String targetName = target.getName();
+                                cacheKey(objRef), KubeApiPlatformClient.this::queryForNode);
+                String targetName = objRef.getName();
                 ServiceRef serviceRef =
                         new ServiceRef(
                                 URIUtil.convert(

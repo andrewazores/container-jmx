@@ -71,6 +71,7 @@ import io.fabric8.kubernetes.client.Watcher;
 import io.fabric8.kubernetes.client.Watcher.Action;
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
 import io.fabric8.kubernetes.client.dsl.NonNamespaceOperation;
+import io.fabric8.kubernetes.client.dsl.PodResource;
 import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
@@ -124,6 +125,15 @@ class KubeApiPlatformClientTest {
 
     @Test
     void shouldReturnListOfMatchingEndpointRefs() throws Exception {
+        PodResource podResource = Mockito.mock(PodResource.class);
+        NonNamespaceOperation podsInNamespaceOperation = Mockito.mock(NonNamespaceOperation.class);
+        Mockito.when(podsInNamespaceOperation.withName(Mockito.anyString()))
+                .thenReturn(podResource);
+        MixedOperation mockPodsOperation = Mockito.mock(MixedOperation.class);
+        Mockito.when(mockPodsOperation.inNamespace(Mockito.anyString()))
+                .thenReturn(podsInNamespaceOperation);
+        Mockito.when(k8sClient.pods()).thenReturn(mockPodsOperation);
+
         MixedOperation mockNamespaceOperation = Mockito.mock(MixedOperation.class);
         Mockito.when(k8sClient.endpoints()).thenReturn(mockNamespaceOperation);
 
@@ -138,12 +148,15 @@ class KubeApiPlatformClientTest {
         // Mockito.when(objRef1.getName()).thenReturn("targetA");
         ObjectReference objRef2 = Mockito.mock(ObjectReference.class);
         Mockito.when(objRef2.getName()).thenReturn("targetB");
+        Mockito.when(objRef2.getKind()).thenReturn("Pod");
         Mockito.when(objRef2.getNamespace()).thenReturn("myproject");
         ObjectReference objRef3 = Mockito.mock(ObjectReference.class);
         Mockito.when(objRef3.getName()).thenReturn("targetC");
+        Mockito.when(objRef3.getKind()).thenReturn("Pod");
         Mockito.when(objRef3.getNamespace()).thenReturn("myproject");
         ObjectReference objRef4 = Mockito.mock(ObjectReference.class);
         Mockito.when(objRef4.getName()).thenReturn("targetD");
+        Mockito.when(objRef4.getKind()).thenReturn("Pod");
         Mockito.when(objRef4.getNamespace()).thenReturn("myproject");
 
         EndpointAddress address1 = Mockito.mock(EndpointAddress.class);
@@ -257,12 +270,15 @@ class KubeApiPlatformClientTest {
         // Mockito.when(objRef1.getName()).thenReturn("targetA");
         ObjectReference objRef2 = Mockito.mock(ObjectReference.class);
         Mockito.when(objRef2.getName()).thenReturn("targetB");
+        Mockito.when(objRef2.getKind()).thenReturn("Route");
         Mockito.when(objRef2.getNamespace()).thenReturn("myproject");
         ObjectReference objRef3 = Mockito.mock(ObjectReference.class);
         Mockito.when(objRef3.getName()).thenReturn("targetC");
+        Mockito.when(objRef3.getKind()).thenReturn("Route");
         Mockito.when(objRef3.getNamespace()).thenReturn("myproject");
         ObjectReference objRef4 = Mockito.mock(ObjectReference.class);
         Mockito.when(objRef4.getName()).thenReturn("targetD");
+        Mockito.when(objRef4.getKind()).thenReturn("Route");
         Mockito.when(objRef4.getNamespace()).thenReturn("myproject");
 
         EndpointAddress address1 = Mockito.mock(EndpointAddress.class);
@@ -417,6 +433,15 @@ class KubeApiPlatformClientTest {
 
     @Test
     public void shouldNotifyOnAsyncAdded() throws Exception {
+        PodResource podResource = Mockito.mock(PodResource.class);
+        NonNamespaceOperation podsInNamespaceOperation = Mockito.mock(NonNamespaceOperation.class);
+        Mockito.when(podsInNamespaceOperation.withName(Mockito.anyString()))
+                .thenReturn(podResource);
+        MixedOperation mockPodsOperation = Mockito.mock(MixedOperation.class);
+        Mockito.when(mockPodsOperation.inNamespace(Mockito.anyString()))
+                .thenReturn(podsInNamespaceOperation);
+        Mockito.when(k8sClient.pods()).thenReturn(mockPodsOperation);
+
         MixedOperation op = Mockito.mock(MixedOperation.class);
         Mockito.when(k8sClient.endpoints()).thenReturn(op);
         Mockito.when(op.inNamespace(Mockito.anyString())).thenReturn(op);
@@ -438,6 +463,7 @@ class KubeApiPlatformClientTest {
 
         ObjectReference objRef = Mockito.mock(ObjectReference.class);
         Mockito.when(objRef.getName()).thenReturn("targetA");
+        Mockito.when(objRef.getKind()).thenReturn("Pod");
         Mockito.when(objRef.getNamespace()).thenReturn("myproject");
         EndpointAddress address = Mockito.mock(EndpointAddress.class);
         Mockito.when(address.getIp()).thenReturn("127.0.0.1");
@@ -483,6 +509,15 @@ class KubeApiPlatformClientTest {
 
     @Test
     public void shouldNotifyOnAsyncDeleted() throws Exception {
+        PodResource podResource = Mockito.mock(PodResource.class);
+        NonNamespaceOperation podsInNamespaceOperation = Mockito.mock(NonNamespaceOperation.class);
+        Mockito.when(podsInNamespaceOperation.withName(Mockito.anyString()))
+                .thenReturn(podResource);
+        MixedOperation mockPodsOperation = Mockito.mock(MixedOperation.class);
+        Mockito.when(mockPodsOperation.inNamespace(Mockito.anyString()))
+                .thenReturn(podsInNamespaceOperation);
+        Mockito.when(k8sClient.pods()).thenReturn(mockPodsOperation);
+
         MixedOperation op = Mockito.mock(MixedOperation.class);
         Mockito.when(k8sClient.endpoints()).thenReturn(op);
         Mockito.when(op.inNamespace(Mockito.anyString())).thenReturn(op);
@@ -504,6 +539,7 @@ class KubeApiPlatformClientTest {
 
         ObjectReference objRef = Mockito.mock(ObjectReference.class);
         Mockito.when(objRef.getName()).thenReturn("targetA");
+        Mockito.when(objRef.getKind()).thenReturn("Pod");
         Mockito.when(objRef.getNamespace()).thenReturn("myproject");
         EndpointAddress address = Mockito.mock(EndpointAddress.class);
         Mockito.when(address.getIp()).thenReturn("127.0.0.1");
@@ -549,6 +585,15 @@ class KubeApiPlatformClientTest {
 
     @Test
     public void shouldNotifyOnAsyncModified() throws Exception {
+        PodResource podResource = Mockito.mock(PodResource.class);
+        NonNamespaceOperation podsInNamespaceOperation = Mockito.mock(NonNamespaceOperation.class);
+        Mockito.when(podsInNamespaceOperation.withName(Mockito.anyString()))
+                .thenReturn(podResource);
+        MixedOperation mockPodsOperation = Mockito.mock(MixedOperation.class);
+        Mockito.when(mockPodsOperation.inNamespace(Mockito.anyString()))
+                .thenReturn(podsInNamespaceOperation);
+        Mockito.when(k8sClient.pods()).thenReturn(mockPodsOperation);
+
         MixedOperation op = Mockito.mock(MixedOperation.class);
         Mockito.when(k8sClient.endpoints()).thenReturn(op);
         Mockito.when(op.inNamespace(Mockito.anyString())).thenReturn(op);
@@ -570,6 +615,7 @@ class KubeApiPlatformClientTest {
 
         ObjectReference objRef = Mockito.mock(ObjectReference.class);
         Mockito.when(objRef.getName()).thenReturn("targetA");
+        Mockito.when(objRef.getKind()).thenReturn("Pod");
         Mockito.when(objRef.getNamespace()).thenReturn("myproject");
         EndpointAddress address = Mockito.mock(EndpointAddress.class);
         Mockito.when(address.getIp()).thenReturn("127.0.0.1");
