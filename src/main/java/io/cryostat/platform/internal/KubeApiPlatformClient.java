@@ -79,6 +79,7 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
     private final String namespace;
     private final Map<Pair<String, String>, Pair<HasMetadata, EnvironmentNode>> discoveryNodeCache =
             new HashMap<>();
+    private final Map<Pair<String, String>, Object> queryLocks = new HashMap<>();
 
     KubeApiPlatformClient(
             String namespace,
@@ -172,6 +173,7 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
                     .inNamespace(namespace)
                     .list()
                     .getItems()
+                    .parallelStream()
                     .forEach(
                             endpoint -> {
                                 endpoint.getSubsets().stream()
@@ -179,7 +181,6 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
                                         .forEach(
                                                 subset -> {
                                                     subset.getAddresses()
-                                                            .parallelStream()
                                                             .forEach(
                                                                     addr -> {
                                                                         buildSubsetOwnerChain(
@@ -197,6 +198,7 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
             return null;
         } finally {
             discoveryNodeCache.clear();
+            queryLocks.clear();
         }
     }
 
@@ -211,43 +213,16 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
             return;
         }
         String targetKind = target.getKind();
-        String targetName = target.getName();
         KubernetesNodeType targetType = KubernetesNodeType.fromKubernetesKind(targetKind);
         if (targetType == KubernetesNodeType.POD) {
             // if the Endpoint points to a Pod, chase the owner chain up as far as possible, then
             // add that to the Namespace
 
-            Pair<String, String> cacheKey = Pair.of(targetKind, targetName);
-            Pair<HasMetadata, EnvironmentNode> pod;
-            synchronized (discoveryNodeCache) {
-                pod =
-                        discoveryNodeCache.computeIfAbsent(
-                                cacheKey,
-                                k -> {
-                                    EnvironmentNode node;
-                                    HasMetadata podRef =
-                                            targetType
-                                                    .getQueryFunction()
-                                                    .apply(k8sClient)
-                                                    .apply(namespace)
-                                                    .apply(targetName);
-                                    if (podRef != null) {
-                                        node =
-                                                new EnvironmentNode(
-                                                        k.getRight(),
-                                                        targetType,
-                                                        podRef.getMetadata().getLabels());
-                                    } else {
-                                        node = new EnvironmentNode(k.getRight(), targetType);
-                                    }
-                                    return Pair.of(podRef, node);
-                                });
-            }
-            synchronized (pod) {
-                getServiceRefs(endpoint).stream()
-                        .map(serviceRef -> new TargetNode(KubernetesNodeType.ENDPOINT, serviceRef))
-                        .forEach(node -> pod.getRight().addChildNode(node));
-            }
+            Pair<HasMetadata, EnvironmentNode> pod =
+                    discoveryNodeCache.computeIfAbsent(cacheKey(target), this::queryForNode);
+            getServiceRefs(endpoint).stream()
+                    .map(serviceRef -> new TargetNode(KubernetesNodeType.ENDPOINT, serviceRef))
+                    .forEach(node -> pod.getRight().addChildNode(node));
 
             Pair<HasMetadata, EnvironmentNode> node = pod;
             while (true) {
@@ -256,22 +231,16 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
                     break;
                 }
                 EnvironmentNode ownerNode = owner.getRight();
-                synchronized (ownerNode) {
-                    ownerNode.addChildNode(node.getRight());
-                }
+                ownerNode.addChildNode(node.getRight());
                 node = owner;
             }
-            synchronized (nsNode) {
-                nsNode.addChildNode(node.getRight());
-            }
+            nsNode.addChildNode(node.getRight());
         } else {
             // if the Endpoint points to something else(?) than a Pod, just add the target straight
             // to the Namespace
-            synchronized (nsNode) {
-                getServiceRefs(endpoint).stream()
-                        .map(serviceRef -> new TargetNode(KubernetesNodeType.ENDPOINT, serviceRef))
-                        .forEach(nsNode::addChildNode);
-            }
+            getServiceRefs(endpoint).stream()
+                    .map(serviceRef -> new TargetNode(KubernetesNodeType.ENDPOINT, serviceRef))
+                    .forEach(nsNode::addChildNode);
         }
     }
 
@@ -292,36 +261,35 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
                         .filter(o -> KubernetesNodeType.fromKubernetesKind(o.getKind()) != null)
                         .findFirst()
                         .orElse(owners.get(0));
-        String ownerKind = owner.getKind();
-        String ownerName = owner.getName();
-        Pair<String, String> cacheKey = Pair.of(ownerKind, ownerName);
-        synchronized (discoveryNodeCache) {
-            return discoveryNodeCache.computeIfAbsent(
-                    cacheKey,
-                    k -> {
-                        KubernetesNodeType ownerType =
-                                KubernetesNodeType.fromKubernetesKind(k.getLeft());
-                        if (ownerType == null) {
-                            return null;
-                        }
-                        EnvironmentNode node;
-                        HasMetadata ownerRef =
-                                ownerType
-                                        .getQueryFunction()
-                                        .apply(k8sClient)
-                                        .apply(namespace)
-                                        .apply(ownerName);
-                        if (ownerRef != null) {
-                            node =
-                                    new EnvironmentNode(
-                                            k.getRight(),
-                                            ownerType,
-                                            ownerRef.getMetadata().getLabels());
-                        } else {
-                            node = new EnvironmentNode(k.getRight(), ownerType);
-                        }
-                        return Pair.of(ownerRef, node);
-                    });
+        return discoveryNodeCache.computeIfAbsent(cacheKey(owner), this::queryForNode);
+    }
+
+    private Pair<String, String> cacheKey(OwnerReference resource) {
+        return Pair.of(resource.getKind(), resource.getName());
+    }
+
+    // Unfortunately, ObjectReference and OwnerReference both independently implement getKind and
+    // getName - they don't come from a common base class.
+    private Pair<String, String> cacheKey(ObjectReference resource) {
+        return Pair.of(resource.getKind(), resource.getName());
+    }
+
+    private Pair<HasMetadata, EnvironmentNode> queryForNode(Pair<String, String> lookupKey) {
+        KubernetesNodeType nodeType = KubernetesNodeType.fromKubernetesKind(lookupKey.getLeft());
+        String nodeName = lookupKey.getRight();
+        if (nodeType == null) {
+            return null;
+        }
+        synchronized (queryLocks.computeIfAbsent(lookupKey, k -> new Object())) {
+            EnvironmentNode node;
+            HasMetadata ownerRef =
+                    nodeType.getQueryFunction().apply(k8sClient).apply(namespace).apply(nodeName);
+            if (ownerRef != null) {
+                node = new EnvironmentNode(nodeName, nodeType, ownerRef.getMetadata().getLabels());
+            } else {
+                node = new EnvironmentNode(nodeName, nodeType);
+            }
+            return Pair.of(ownerRef, node);
         }
     }
 
@@ -353,6 +321,9 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
                         addr -> {
                             try {
                                 ObjectReference target = addr.getTargetRef();
+                                Pair<HasMetadata, EnvironmentNode> node =
+                                        discoveryNodeCache.computeIfAbsent(
+                                                cacheKey(target), this::queryForNode);
                                 String targetName = target.getName();
                                 ServiceRef serviceRef =
                                         new ServiceRef(
@@ -364,16 +335,8 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
                                                                         port.getPort())),
                                                 targetName);
 
-                                String targetKind = target.getKind();
-                                KubernetesNodeType targetType =
-                                        KubernetesNodeType.fromKubernetesKind(targetKind);
-                                if (targetType == KubernetesNodeType.POD) {
-                                    HasMetadata podRef =
-                                            KubernetesNodeType.POD
-                                                    .getQueryFunction()
-                                                    .apply(k8sClient)
-                                                    .apply(namespace)
-                                                    .apply(targetName);
+                                if (node.getRight().getNodeType() == KubernetesNodeType.POD) {
+                                    HasMetadata podRef = node.getLeft();
                                     if (podRef != null) {
                                         serviceRef.setLabels(podRef.getMetadata().getLabels());
                                         serviceRef.setPlatformAnnotations(
@@ -466,4 +429,6 @@ public class KubeApiPlatformClient extends AbstractPlatformClient {
             return null;
         }
     }
+
+    private static class CacheKey extends Pair<String, String> {}
 }

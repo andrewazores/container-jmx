@@ -40,7 +40,7 @@ package io.cryostat.platform.discovery;
 import java.util.Collections;
 import java.util.Map;
 import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 public class EnvironmentNode extends AbstractNode {
 
@@ -52,7 +52,7 @@ public class EnvironmentNode extends AbstractNode {
 
     public EnvironmentNode(String name, NodeType nodeType, Map<String, String> labels) {
         super(name, nodeType, labels);
-        this.children = new TreeSet<>();
+        this.children = new ConcurrentSkipListSet<>();
     }
 
     public SortedSet<AbstractNode> getChildren() {
