@@ -98,7 +98,7 @@ class DiscoveryIT extends ExternalTargetsTest {
     void testDiscovery() throws Exception {
         CompletableFuture<V2Response<DiscoveryResult>> resp = new CompletableFuture<>();
         webClient
-                .get("/api/v2/discovery")
+                .get("/api/beta/discovery")
                 .send(
                         ar -> {
                             if (assertRequestStatus(ar, resp)) {

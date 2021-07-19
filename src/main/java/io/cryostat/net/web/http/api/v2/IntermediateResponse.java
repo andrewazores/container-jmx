@@ -40,51 +40,51 @@ package io.cryostat.net.web.http.api.v2;
 import java.util.HashMap;
 import java.util.Map;
 
-class IntermediateResponse<T> {
+public class IntermediateResponse<T> {
 
     private final Map<CharSequence, CharSequence> headers = new HashMap<>();
     private int statusCode = 200;
     private String statusMessage;
     private T body;
 
-    IntermediateResponse<T> addHeader(CharSequence key, CharSequence value) {
+    public IntermediateResponse<T> addHeader(CharSequence key, CharSequence value) {
         this.headers.put(key, value);
         return this;
     }
 
-    IntermediateResponse<T> removeHeader(CharSequence key) {
+    public IntermediateResponse<T> removeHeader(CharSequence key) {
         this.headers.remove(key);
         return this;
     }
 
-    IntermediateResponse<T> statusCode(int statusCode) {
+    public IntermediateResponse<T> statusCode(int statusCode) {
         this.statusCode = statusCode;
         return this;
     }
 
-    IntermediateResponse<T> statusMessage(String statusMessage) {
+    public IntermediateResponse<T> statusMessage(String statusMessage) {
         this.statusMessage = statusMessage;
         return this;
     }
 
-    IntermediateResponse<T> body(T body) {
+    public IntermediateResponse<T> body(T body) {
         this.body = body;
         return this;
     }
 
-    int getStatusCode() {
+    public int getStatusCode() {
         return this.statusCode;
     }
 
-    Map<CharSequence, CharSequence> getHeaders() {
+    public Map<CharSequence, CharSequence> getHeaders() {
         return this.headers;
     }
 
-    String getStatusMessage() {
+    public String getStatusMessage() {
         return this.statusMessage;
     }
 
-    T getBody() {
+    public T getBody() {
         return this.body;
     }
 }

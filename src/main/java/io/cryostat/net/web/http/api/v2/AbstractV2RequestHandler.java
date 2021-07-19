@@ -62,14 +62,14 @@ import io.vertx.core.http.HttpServerResponse;
 import io.vertx.ext.web.RoutingContext;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
-abstract class AbstractV2RequestHandler<T> implements RequestHandler {
+public abstract class AbstractV2RequestHandler<T> implements RequestHandler {
 
-    abstract boolean requiresAuthentication();
+    public abstract boolean requiresAuthentication();
 
-    static final Pattern AUTH_HEADER_PATTERN =
+    public static final Pattern AUTH_HEADER_PATTERN =
             Pattern.compile("(?<type>[\\w]+)[\\s]+(?<credentials>[\\S]+)");
-    static final String JMX_AUTHENTICATE_HEADER = "X-JMX-Authenticate";
-    static final String JMX_AUTHORIZATION_HEADER = "X-JMX-Authorization";
+    public static final String JMX_AUTHENTICATE_HEADER = "X-JMX-Authenticate";
+    public static final String JMX_AUTHORIZATION_HEADER = "X-JMX-Authorization";
 
     protected final AuthManager auth;
     protected final Gson gson;
@@ -79,9 +79,10 @@ abstract class AbstractV2RequestHandler<T> implements RequestHandler {
         this.gson = gson;
     }
 
-    abstract IntermediateResponse<T> handle(RequestParameters requestParams) throws Exception;
+    public abstract IntermediateResponse<T> handle(RequestParameters requestParams)
+            throws Exception;
 
-    abstract HttpMimeType mimeType();
+    public abstract HttpMimeType mimeType();
 
     @Override
     public final void handle(RoutingContext ctx) {
