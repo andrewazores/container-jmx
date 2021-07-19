@@ -52,6 +52,7 @@ import io.cryostat.util.URIUtil;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.ext.web.RoutingContext;
@@ -118,10 +119,13 @@ class TargetsGetHandlerTest {
         RoutingContext ctx = Mockito.mock(RoutingContext.class);
         HttpServerResponse resp = Mockito.mock(HttpServerResponse.class);
         Mockito.when(ctx.response()).thenReturn(resp);
+        Mockito.when(
+                        resp.putHeader(
+                                Mockito.any(CharSequence.class), Mockito.any(CharSequence.class)))
+                .thenReturn(resp);
 
         handler.handleAuthenticated(ctx);
 
-        Mockito.verify(ctx).response();
         Mockito.verifyNoMoreInteractions(ctx);
 
         ArgumentCaptor<String> responseCaptor = ArgumentCaptor.forClass(String.class);
@@ -131,5 +135,6 @@ class TargetsGetHandlerTest {
                 gson.fromJson(
                         responseCaptor.getValue(), new TypeToken<List<ServiceRef>>() {}.getType());
         MatcherAssert.assertThat(result, Matchers.equalTo(targets));
+        Mockito.verify(resp).putHeader(HttpHeaders.CONTENT_TYPE, "application/json");
     }
 }

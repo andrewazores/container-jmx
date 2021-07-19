@@ -118,6 +118,12 @@ class RecordingDeleteHandlerTest {
 
         Mockito.when(fs.listDirectoryChildren(Mockito.any())).thenReturn(List.of());
 
+        Mockito.when(ctx.response()).thenReturn(resp);
+        Mockito.when(
+                        resp.putHeader(
+                                Mockito.any(CharSequence.class), Mockito.any(CharSequence.class)))
+                .thenReturn(resp);
+
         HttpStatusException ex =
                 Assertions.assertThrows(HttpStatusException.class, () -> handler.handle(ctx));
         MatcherAssert.assertThat(ex.getStatusCode(), Matchers.equalTo(404));
@@ -167,6 +173,12 @@ class RecordingDeleteHandlerTest {
         Mockito.when(fs.deleteIfExists(path)).thenThrow(IOException.class);
 
         Mockito.when(ctx.pathParam("recordingName")).thenReturn(recordingName);
+
+        Mockito.when(ctx.response()).thenReturn(resp);
+        Mockito.when(
+                        resp.putHeader(
+                                Mockito.any(CharSequence.class), Mockito.any(CharSequence.class)))
+                .thenReturn(resp);
 
         HttpStatusException ex =
                 Assertions.assertThrows(HttpStatusException.class, () -> handler.handle(ctx));

@@ -116,6 +116,8 @@ class TargetRecordingGetHandlerTest {
         RoutingContext ctx = mock(RoutingContext.class);
         HttpServerResponse resp = mock(HttpServerResponse.class);
         when(ctx.response()).thenReturn(resp);
+        when(resp.putHeader(Mockito.any(CharSequence.class), Mockito.any(CharSequence.class)))
+                .thenReturn(resp);
         HttpServerRequest req = mock(HttpServerRequest.class);
         when(ctx.request()).thenReturn(req);
         when(ctx.request().headers()).thenReturn(MultiMap.caseInsensitiveMultiMap());
@@ -166,6 +168,8 @@ class TargetRecordingGetHandlerTest {
         RoutingContext ctx = mock(RoutingContext.class);
         HttpServerResponse resp = mock(HttpServerResponse.class);
         when(ctx.response()).thenReturn(resp);
+        when(resp.putHeader(Mockito.any(CharSequence.class), Mockito.any(CharSequence.class)))
+                .thenReturn(resp);
         HttpServerRequest req = mock(HttpServerRequest.class);
         when(ctx.request()).thenReturn(req);
         when(ctx.request().headers()).thenReturn(MultiMap.caseInsensitiveMultiMap());
@@ -216,6 +220,10 @@ class TargetRecordingGetHandlerTest {
         HttpServerRequest req = mock(HttpServerRequest.class);
         when(ctx.request()).thenReturn(req);
         when(ctx.request().headers()).thenReturn(MultiMap.caseInsensitiveMultiMap());
+        HttpServerResponse resp = mock(HttpServerResponse.class);
+        when(ctx.response()).thenReturn(resp);
+        when(resp.putHeader(Mockito.any(CharSequence.class), Mockito.any(CharSequence.class)))
+                .thenReturn(resp);
 
         when(targetConnectionManager.executeConnectedTask(Mockito.any(), Mockito.any()))
                 .thenAnswer(
@@ -247,6 +255,10 @@ class TargetRecordingGetHandlerTest {
         HttpServerRequest req = mock(HttpServerRequest.class);
         when(ctx.request()).thenReturn(req);
         when(ctx.request().headers()).thenReturn(MultiMap.caseInsensitiveMultiMap());
+        HttpServerResponse resp = mock(HttpServerResponse.class);
+        when(ctx.response()).thenReturn(resp);
+        when(resp.putHeader(Mockito.any(CharSequence.class), Mockito.any(CharSequence.class)))
+                .thenReturn(resp);
 
         when(targetConnectionManager.executeConnectedTask(Mockito.any(), Mockito.any()))
                 .thenAnswer(

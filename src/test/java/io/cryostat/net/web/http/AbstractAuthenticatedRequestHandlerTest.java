@@ -79,6 +79,15 @@ class AbstractAuthenticatedRequestHandlerTest {
     @BeforeEach
     void setup() {
         this.handler = new AuthenticatedHandler(auth);
+        Mockito.lenient().when(ctx.response()).thenReturn(resp);
+        Mockito.lenient()
+                .when(
+                        resp.putHeader(
+                                Mockito.any(CharSequence.class), Mockito.any(CharSequence.class)))
+                .thenReturn(resp);
+        Mockito.lenient()
+                .when(resp.putHeader(Mockito.anyString(), Mockito.anyString()))
+                .thenReturn(resp);
     }
 
     @Test

@@ -45,6 +45,7 @@ import io.cryostat.net.ConnectionDescriptor;
 import io.vertx.core.MultiMap;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.http.HttpServerResponse;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.impl.HttpStatusException;
 import org.hamcrest.MatcherAssert;
@@ -69,6 +70,7 @@ class TargetRecordingPatchHandlerTest {
     @Mock TargetRecordingPatchStop patchStop;
     @Mock RoutingContext ctx;
     @Mock HttpServerRequest req;
+    @Mock HttpServerResponse resp;
     @Mock ConnectionDescriptor connectionDescriptor;
 
     @BeforeEach
@@ -111,6 +113,11 @@ class TargetRecordingPatchHandlerTest {
         Mockito.when(authManager.validateHttpHeader(Mockito.any()))
                 .thenReturn(CompletableFuture.completedFuture(true));
         Mockito.when(ctx.getBodyAsString()).thenReturn(mtd);
+        Mockito.when(ctx.response()).thenReturn(resp);
+        Mockito.when(
+                        resp.putHeader(
+                                Mockito.any(CharSequence.class), Mockito.any(CharSequence.class)))
+                .thenReturn(resp);
 
         HttpStatusException ex =
                 Assertions.assertThrows(HttpStatusException.class, () -> handler.handle(ctx));
@@ -126,6 +133,11 @@ class TargetRecordingPatchHandlerTest {
         Mockito.when(ctx.request()).thenReturn(req);
         Mockito.when(req.headers()).thenReturn(MultiMap.caseInsensitiveMultiMap());
         Mockito.when(ctx.getBodyAsString()).thenReturn(mtd);
+        Mockito.when(ctx.response()).thenReturn(resp);
+        Mockito.when(
+                        resp.putHeader(
+                                Mockito.any(CharSequence.class), Mockito.any(CharSequence.class)))
+                .thenReturn(resp);
 
         handler.handle(ctx);
 

@@ -115,6 +115,12 @@ class RecordingUploadPostHandlerTest {
             })
     @NullAndEmptySource
     void shouldThrow501IfDatasourceUrlMalformed(String rawUrl) {
+        HttpServerResponse resp = Mockito.mock(HttpServerResponse.class);
+        Mockito.when(ctx.response()).thenReturn(resp);
+        Mockito.when(
+                        resp.putHeader(
+                                Mockito.any(CharSequence.class), Mockito.any(CharSequence.class)))
+                .thenReturn(resp);
         Mockito.when(auth.validateHttpHeader(Mockito.any()))
                 .thenReturn(CompletableFuture.completedFuture(true));
         Mockito.when(env.getEnv("GRAFANA_DATASOURCE_URL")).thenReturn(rawUrl);
@@ -126,6 +132,12 @@ class RecordingUploadPostHandlerTest {
 
     @Test
     void shouldThrowExceptionIfRecordingNotFound() throws Exception {
+        HttpServerResponse resp = Mockito.mock(HttpServerResponse.class);
+        Mockito.when(ctx.response()).thenReturn(resp);
+        Mockito.when(
+                        resp.putHeader(
+                                Mockito.any(CharSequence.class), Mockito.any(CharSequence.class)))
+                .thenReturn(resp);
         Mockito.when(auth.validateHttpHeader(Mockito.any()))
                 .thenReturn(CompletableFuture.completedFuture(true));
         Mockito.when(env.getEnv("GRAFANA_DATASOURCE_URL")).thenReturn(DATASOURCE_URL);
@@ -173,6 +185,10 @@ class RecordingUploadPostHandlerTest {
 
         HttpServerResponse resp = Mockito.mock(HttpServerResponse.class);
         Mockito.when(ctx.response()).thenReturn(resp);
+        Mockito.when(
+                        resp.putHeader(
+                                Mockito.any(CharSequence.class), Mockito.any(CharSequence.class)))
+                .thenReturn(resp);
 
         handler.handle(ctx);
 
@@ -221,6 +237,13 @@ class RecordingUploadPostHandlerTest {
                 .when(httpReq)
                 .sendMultipartForm(Mockito.any(), Mockito.any());
 
+        HttpServerResponse resp = Mockito.mock(HttpServerResponse.class);
+        Mockito.when(ctx.response()).thenReturn(resp);
+        Mockito.when(
+                        resp.putHeader(
+                                Mockito.any(CharSequence.class), Mockito.any(CharSequence.class)))
+                .thenReturn(resp);
+
         HttpStatusException e =
                 Assertions.assertThrows(HttpStatusException.class, () -> handler.handle(ctx));
 
@@ -238,6 +261,12 @@ class RecordingUploadPostHandlerTest {
 
     @Test
     void shouldHandleNullStatusMessage() throws Exception {
+        HttpServerResponse resp = Mockito.mock(HttpServerResponse.class);
+        Mockito.when(ctx.response()).thenReturn(resp);
+        Mockito.when(
+                        resp.putHeader(
+                                Mockito.any(CharSequence.class), Mockito.any(CharSequence.class)))
+                .thenReturn(resp);
         Mockito.when(auth.validateHttpHeader(Mockito.any()))
                 .thenReturn(CompletableFuture.completedFuture(true));
         Mockito.when(env.getEnv("GRAFANA_DATASOURCE_URL")).thenReturn(DATASOURCE_URL);
@@ -288,6 +317,12 @@ class RecordingUploadPostHandlerTest {
 
     @Test
     void shouldHandleNullResponseBody() throws Exception {
+        HttpServerResponse resp = Mockito.mock(HttpServerResponse.class);
+        Mockito.when(ctx.response()).thenReturn(resp);
+        Mockito.when(
+                        resp.putHeader(
+                                Mockito.any(CharSequence.class), Mockito.any(CharSequence.class)))
+                .thenReturn(resp);
         Mockito.when(auth.validateHttpHeader(Mockito.any()))
                 .thenReturn(CompletableFuture.completedFuture(true));
         Mockito.when(env.getEnv("GRAFANA_DATASOURCE_URL")).thenReturn(DATASOURCE_URL);
