@@ -45,8 +45,10 @@ import javax.inject.Named;
 import io.cryostat.MainModule;
 import io.cryostat.net.AuthManager;
 import io.cryostat.net.web.http.AbstractAuthenticatedRequestHandler;
+import io.cryostat.net.web.http.HttpMimeType;
 import io.cryostat.net.web.http.api.ApiVersion;
 
+import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.ext.web.RoutingContext;
 
@@ -92,6 +94,10 @@ class RecordingGetHandler extends AbstractAuthenticatedRequestHandler {
                         filePath,
                         ar -> {
                             if (ar.result()) {
+                                ctx.response()
+                                        .putHeader(
+                                                HttpHeaders.CONTENT_TYPE,
+                                                HttpMimeType.OCTET_STREAM.mime());
                                 ctx.response().sendFile(filePath);
                             } else {
                                 ctx.response().setStatusCode(404);

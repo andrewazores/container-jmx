@@ -50,10 +50,12 @@ import org.openjdk.jmc.rjmx.services.jfr.IFlightRecorderService;
 import io.cryostat.net.AuthManager;
 import io.cryostat.net.TargetConnectionManager;
 import io.cryostat.net.web.http.AbstractAuthenticatedRequestHandler;
+import io.cryostat.net.web.http.HttpMimeType;
 import io.cryostat.net.web.http.api.ApiVersion;
 import io.cryostat.recordings.RecordingOptionsBuilderFactory;
 
 import com.google.gson.Gson;
+import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.ext.web.RoutingContext;
 
@@ -106,6 +108,7 @@ class TargetRecordingOptionsGetHandler extends AbstractAuthenticatedRequestHandl
                                     recordingOptionsBuilderFactory.create(connection.getService());
                             return getRecordingOptions(connection.getService(), builder);
                         });
+        ctx.response().putHeader(HttpHeaders.CONTENT_TYPE, HttpMimeType.JSON.mime());
         ctx.response().end(gson.toJson(optionMap));
     }
 

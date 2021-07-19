@@ -51,11 +51,13 @@ import io.cryostat.core.RecordingOptionsCustomizer.OptionKey;
 import io.cryostat.net.AuthManager;
 import io.cryostat.net.TargetConnectionManager;
 import io.cryostat.net.web.http.AbstractAuthenticatedRequestHandler;
+import io.cryostat.net.web.http.HttpMimeType;
 import io.cryostat.net.web.http.api.ApiVersion;
 import io.cryostat.recordings.RecordingOptionsBuilderFactory;
 
 import com.google.gson.Gson;
 import io.vertx.core.MultiMap;
+import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.impl.HttpStatusException;
@@ -145,6 +147,7 @@ class TargetRecordingOptionsPatchHandler extends AbstractAuthenticatedRequestHan
                                     connection.getService(), builder);
                         });
 
+        ctx.response().putHeader(HttpHeaders.CONTENT_TYPE, HttpMimeType.JSON.mime());
         ctx.response().setStatusCode(200);
         ctx.response().end(gson.toJson(updatedMap));
     }

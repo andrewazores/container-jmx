@@ -80,6 +80,8 @@ public abstract class AbstractAuthenticatedRequestHandler implements RequestHand
             if (!validateRequestAuthorization(ctx.request()).get()) {
                 throw new HttpStatusException(401);
             }
+            // set Content-Type: text/plain by default. Handler implementations may replace this.
+            ctx.response().putHeader(HttpHeaders.CONTENT_TYPE, HttpMimeType.PLAINTEXT.mime());
             handleAuthenticated(ctx);
         } catch (HttpStatusException e) {
             throw e;
