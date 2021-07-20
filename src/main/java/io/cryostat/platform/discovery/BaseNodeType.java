@@ -35,22 +35,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package io.cryostat.platform;
+package io.cryostat.platform.discovery;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.function.Consumer;
+public enum BaseNodeType implements NodeType {
+    // represents the entire deployment scenario Cryostat finds itself in
+    UNIVERSE("Universe"),
+    // represents a division of the deployment scenario - the universe may consist of a
+    // Kubernetes Realm and a JDP Realm, for example
+    REALM("Realm"),
+    ;
 
-import io.cryostat.platform.discovery.EnvironmentNode;
+    private final String kind;
 
-public interface PlatformClient {
-    void start() throws IOException;
+    BaseNodeType(String kind) {
+        this.kind = kind;
+    }
 
-    List<ServiceRef> listDiscoverableServices();
-
-    void addTargetDiscoveryListener(Consumer<TargetDiscoveryEvent> listener);
-
-    void removeTargetDiscoveryListener(Consumer<TargetDiscoveryEvent> listener);
-
-    EnvironmentNode getDiscoveryTree();
+    @Override
+    public String getKind() {
+        return kind;
+    }
 }

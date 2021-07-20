@@ -35,22 +35,19 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package io.cryostat.platform;
+package io.cryostat.util;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.function.Consumer;
+import com.google.gson.TypeAdapter;
 
-import io.cryostat.platform.discovery.EnvironmentNode;
+public abstract class PluggableTypeAdapter<T> extends TypeAdapter<T> {
 
-public interface PlatformClient {
-    void start() throws IOException;
+    protected final Class<T> klazz;
 
-    List<ServiceRef> listDiscoverableServices();
+    public PluggableTypeAdapter(Class<T> klazz) {
+        this.klazz = klazz;
+    }
 
-    void addTargetDiscoveryListener(Consumer<TargetDiscoveryEvent> listener);
-
-    void removeTargetDiscoveryListener(Consumer<TargetDiscoveryEvent> listener);
-
-    EnvironmentNode getDiscoveryTree();
+    public Class<T> getAdaptedType() {
+        return klazz;
+    }
 }

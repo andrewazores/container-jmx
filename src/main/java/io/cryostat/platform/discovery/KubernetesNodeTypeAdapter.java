@@ -35,22 +35,30 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package io.cryostat.platform;
+package io.cryostat.platform.discovery;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.function.Consumer;
 
-import io.cryostat.platform.discovery.EnvironmentNode;
+import io.cryostat.platform.internal.KubeApiPlatformClient.KubernetesNodeType;
+import io.cryostat.util.PluggableTypeAdapter;
 
-public interface PlatformClient {
-    void start() throws IOException;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 
-    List<ServiceRef> listDiscoverableServices();
+public class KubernetesNodeTypeAdapter extends PluggableTypeAdapter<KubernetesNodeType> {
 
-    void addTargetDiscoveryListener(Consumer<TargetDiscoveryEvent> listener);
+    public KubernetesNodeTypeAdapter() {
+        super(KubernetesNodeType.class);
+    }
 
-    void removeTargetDiscoveryListener(Consumer<TargetDiscoveryEvent> listener);
+    @Override
+    public KubernetesNodeType read(JsonReader reader) throws IOException {
+        String token = reader.nextString();
+        return KubernetesNodeType.fromKubernetesKind(token);
+    }
 
-    EnvironmentNode getDiscoveryTree();
+    @Override
+    public void write(JsonWriter writer, KubernetesNodeType nodeType) throws IOException {
+        writer.value(nodeType.getKind());
+    }
 }

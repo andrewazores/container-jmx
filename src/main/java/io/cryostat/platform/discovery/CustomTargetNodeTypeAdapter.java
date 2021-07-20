@@ -35,22 +35,34 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package io.cryostat.platform;
+package io.cryostat.platform.discovery;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.function.Consumer;
 
-import io.cryostat.platform.discovery.EnvironmentNode;
+import io.cryostat.platform.internal.CustomTargetPlatformClient;
+import io.cryostat.platform.internal.CustomTargetPlatformClient.CustomTargetNodeType;
+import io.cryostat.util.PluggableTypeAdapter;
 
-public interface PlatformClient {
-    void start() throws IOException;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 
-    List<ServiceRef> listDiscoverableServices();
+public class CustomTargetNodeTypeAdapter extends PluggableTypeAdapter<CustomTargetNodeType> {
 
-    void addTargetDiscoveryListener(Consumer<TargetDiscoveryEvent> listener);
+    public CustomTargetNodeTypeAdapter() {
+        super(CustomTargetNodeType.class);
+    }
 
-    void removeTargetDiscoveryListener(Consumer<TargetDiscoveryEvent> listener);
+    @Override
+    public CustomTargetNodeType read(JsonReader reader) throws IOException {
+        String token = reader.nextString();
+        if (CustomTargetPlatformClient.NODE_TYPE.getKind().equals(token)) {
+            return CustomTargetPlatformClient.NODE_TYPE;
+        }
+        return null;
+    }
 
-    EnvironmentNode getDiscoveryTree();
+    @Override
+    public void write(JsonWriter writer, CustomTargetNodeType nodeType) throws IOException {
+        writer.value(nodeType.getKind());
+    }
 }

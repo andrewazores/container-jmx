@@ -52,8 +52,12 @@ import io.cryostat.core.log.Logger;
 import io.cryostat.core.net.JFRConnectionToolkit;
 import io.cryostat.core.sys.Environment;
 import io.cryostat.platform.ServiceRef;
+import io.cryostat.platform.discovery.AbstractNode;
+import io.cryostat.platform.discovery.BaseNodeType;
+import io.cryostat.platform.discovery.EnvironmentNode;
 import io.cryostat.util.URIUtil;
 
+import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
@@ -135,6 +139,65 @@ class KubeEnvPlatformClientTest {
             MatcherAssert.assertThat(services, Matchers.containsInAnyOrder(serv1, serv2));
             MatcherAssert.assertThat(services, Matchers.hasSize(2));
             verifyNoMoreInteractions(env);
+        }
+
+        @Test
+        void shouldDiscoverServicesAsTree() throws MalformedURLException, URISyntaxException {
+            when(env.getEnv())
+                    .thenReturn(
+                            Map.of(
+                                    "FOO_PORT_1234_TCP_ADDR", "127.0.0.1",
+                                    "BAR_PORT_9999_TCP_ADDR", "1.2.3.4",
+                                    "BAZ_PORT_9876_UDP_ADDR", "5.6.7.8"));
+
+            Mockito.when(connectionToolkit.createServiceURL(Mockito.anyString(), Mockito.anyInt()))
+                    .thenAnswer(
+                            new Answer<>() {
+                                @Override
+                                public JMXServiceURL answer(InvocationOnMock args)
+                                        throws Throwable {
+                                    String host = args.getArgument(0);
+                                    int port = args.getArgument(1);
+                                    return new JMXServiceURL(
+                                            "rmi",
+                                            "",
+                                            0,
+                                            "/jndi/rmi://" + host + ":" + port + "/jmxrmi");
+                                }
+                            });
+
+            ServiceRef serv1 =
+                    new ServiceRef(
+                            URIUtil.convert(connectionToolkit.createServiceURL("127.0.0.1", 1234)),
+                            "foo");
+            ServiceRef serv2 =
+                    new ServiceRef(
+                            URIUtil.convert(connectionToolkit.createServiceURL("1.2.3.4", 9999)),
+                            "bar");
+
+            EnvironmentNode realmNode = client.getDiscoveryTree();
+
+            MatcherAssert.assertThat(realmNode.getName(), Matchers.equalTo("KubernetesEnv"));
+            MatcherAssert.assertThat(realmNode.getNodeType(), Matchers.equalTo(BaseNodeType.REALM));
+            MatcherAssert.assertThat(realmNode.getLabels().size(), Matchers.equalTo(0));
+            MatcherAssert.assertThat(realmNode.getChildren(), Matchers.hasSize(2));
+
+            Matcher<AbstractNode> sr1Matcher =
+                    Matchers.allOf(
+                            Matchers.hasProperty(
+                                    "name", Matchers.equalTo(serv1.getServiceUri().toString())),
+                            Matchers.hasProperty(
+                                    "nodeType", Matchers.equalTo(KubeEnvPlatformClient.NODE_TYPE)),
+                            Matchers.hasProperty("target", Matchers.equalTo(serv1)));
+            Matcher<AbstractNode> sr2Matcher =
+                    Matchers.allOf(
+                            Matchers.hasProperty(
+                                    "name", Matchers.equalTo(serv2.getServiceUri().toString())),
+                            Matchers.hasProperty(
+                                    "nodeType", Matchers.equalTo(KubeEnvPlatformClient.NODE_TYPE)),
+                            Matchers.hasProperty("target", Matchers.equalTo(serv2)));
+            MatcherAssert.assertThat(
+                    realmNode.getChildren(), Matchers.hasItems(sr1Matcher, sr2Matcher));
         }
     }
 }

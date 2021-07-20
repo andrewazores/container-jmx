@@ -59,8 +59,12 @@ import io.cryostat.core.net.discovery.JvmDiscoveryClient.JvmDiscoveryEvent;
 import io.cryostat.platform.ServiceRef;
 import io.cryostat.platform.ServiceRef.AnnotationKey;
 import io.cryostat.platform.TargetDiscoveryEvent;
+import io.cryostat.platform.discovery.AbstractNode;
+import io.cryostat.platform.discovery.BaseNodeType;
+import io.cryostat.platform.discovery.EnvironmentNode;
 import io.cryostat.util.URIUtil;
 
+import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
@@ -132,6 +136,66 @@ class DefaultPlatformClientTest {
                         AnnotationKey.PORT, "9092"));
 
         assertThat(results, equalTo(List.of(exp1, exp2)));
+    }
+
+    @Test
+    void testDiscoveryTree() throws Exception {
+        DiscoveredJvmDescriptor desc1 = mock(DiscoveredJvmDescriptor.class);
+        JMXServiceURL url1 =
+                new JMXServiceURL("service:jmx:rmi:///jndi/rmi://cryostat:9091/jmxrmi");
+        when(desc1.getMainClass()).thenReturn("com.example.Main");
+        when(desc1.getJmxServiceUrl()).thenReturn(url1);
+
+        DiscoveredJvmDescriptor desc2 = mock(DiscoveredJvmDescriptor.class);
+        when(desc2.getJmxServiceUrl()).thenThrow(MalformedURLException.class);
+
+        DiscoveredJvmDescriptor desc3 = mock(DiscoveredJvmDescriptor.class);
+        JMXServiceURL url2 =
+                new JMXServiceURL("service:jmx:rmi:///jndi/rmi://cryostat:9092/jmxrmi");
+        when(desc3.getMainClass()).thenReturn("io.cryostat.Cryostat");
+        when(desc3.getJmxServiceUrl()).thenReturn(url2);
+
+        when(discoveryClient.getDiscoveredJvmDescriptors())
+                .thenReturn(List.of(desc1, desc2, desc3));
+
+        EnvironmentNode realmNode = client.getDiscoveryTree();
+
+        ServiceRef exp1 =
+                new ServiceRef(URIUtil.convert(desc1.getJmxServiceUrl()), desc1.getMainClass());
+        exp1.setCryostatAnnotations(
+                Map.of(
+                        AnnotationKey.JAVA_MAIN, desc1.getMainClass(),
+                        AnnotationKey.HOST, "cryostat",
+                        AnnotationKey.PORT, "9091"));
+        ServiceRef exp2 =
+                new ServiceRef(URIUtil.convert(desc3.getJmxServiceUrl()), desc3.getMainClass());
+        exp2.setCryostatAnnotations(
+                Map.of(
+                        AnnotationKey.JAVA_MAIN, desc3.getMainClass(),
+                        AnnotationKey.HOST, "cryostat",
+                        AnnotationKey.PORT, "9092"));
+
+        MatcherAssert.assertThat(realmNode.getName(), Matchers.equalTo("JDP"));
+        MatcherAssert.assertThat(realmNode.getNodeType(), Matchers.equalTo(BaseNodeType.REALM));
+        MatcherAssert.assertThat(realmNode.getLabels().size(), Matchers.equalTo(0));
+        MatcherAssert.assertThat(realmNode.getChildren(), Matchers.hasSize(2));
+
+        Matcher<AbstractNode> sr1Matcher =
+                Matchers.allOf(
+                        Matchers.hasProperty(
+                                "name", Matchers.equalTo(exp1.getServiceUri().toString())),
+                        Matchers.hasProperty(
+                                "nodeType", Matchers.equalTo(DefaultPlatformClient.NODE_TYPE)),
+                        Matchers.hasProperty("target", Matchers.equalTo(exp1)));
+        Matcher<AbstractNode> sr2Matcher =
+                Matchers.allOf(
+                        Matchers.hasProperty(
+                                "name", Matchers.equalTo(exp2.getServiceUri().toString())),
+                        Matchers.hasProperty(
+                                "nodeType", Matchers.equalTo(DefaultPlatformClient.NODE_TYPE)),
+                        Matchers.hasProperty("target", Matchers.equalTo(exp2)));
+        MatcherAssert.assertThat(
+                realmNode.getChildren(), Matchers.hasItems(sr1Matcher, sr2Matcher));
     }
 
     @Test

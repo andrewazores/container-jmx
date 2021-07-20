@@ -46,7 +46,7 @@ import io.vertx.core.MultiMap;
 import io.vertx.ext.web.FileUpload;
 import io.vertx.ext.web.RoutingContext;
 
-class RequestParameters {
+public class RequestParameters {
 
     private final Map<String, String> pathParams;
     private final MultiMap queryParams;
@@ -55,7 +55,7 @@ class RequestParameters {
     private final Set<FileUpload> fileUploads;
     private final String body;
 
-    RequestParameters(
+    public RequestParameters(
             Map<String, String> pathParams,
             MultiMap queryParams,
             MultiMap headers,
@@ -73,7 +73,7 @@ class RequestParameters {
         this.body = body;
     }
 
-    static RequestParameters from(RoutingContext ctx) {
+    public static RequestParameters from(RoutingContext ctx) {
         Map<String, String> pathParams = new HashMap<>();
         if (ctx != null && ctx.pathParams() != null) {
             pathParams.putAll(ctx.pathParams());
@@ -108,27 +108,27 @@ class RequestParameters {
                 pathParams, queryParams, headers, formAttributes, fileUploads, body);
     }
 
-    Map<String, String> getPathParams() {
+    public Map<String, String> getPathParams() {
         return this.pathParams;
     }
 
-    MultiMap getQueryParams() {
+    public MultiMap getQueryParams() {
         return this.queryParams;
     }
 
-    MultiMap getHeaders() {
+    public MultiMap getHeaders() {
         return this.headers;
     }
 
-    MultiMap getFormAttributes() {
+    public MultiMap getFormAttributes() {
         return this.formAttributes;
     }
 
-    Set<FileUpload> getFileUploads() {
+    public Set<FileUpload> getFileUploads() {
         return this.fileUploads;
     }
 
-    String getBody() {
+    public String getBody() {
         return this.body;
     }
 }

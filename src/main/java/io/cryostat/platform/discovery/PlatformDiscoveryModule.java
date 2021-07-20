@@ -35,22 +35,38 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package io.cryostat.platform;
+package io.cryostat.platform.discovery;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.function.Consumer;
+import io.cryostat.util.PluggableTypeAdapter;
 
-import io.cryostat.platform.discovery.EnvironmentNode;
+import dagger.Module;
+import dagger.Provides;
+import dagger.multibindings.IntoSet;
 
-public interface PlatformClient {
-    void start() throws IOException;
+@Module
+public abstract class PlatformDiscoveryModule {
 
-    List<ServiceRef> listDiscoverableServices();
+    @Provides
+    @IntoSet
+    static PluggableTypeAdapter<?> provideBaseNodeTypeAdapter() {
+        return new BaseNodeTypeAdapter();
+    }
 
-    void addTargetDiscoveryListener(Consumer<TargetDiscoveryEvent> listener);
+    @Provides
+    @IntoSet
+    static PluggableTypeAdapter<?> provideCustomTargetNodeTypeAdapter() {
+        return new CustomTargetNodeTypeAdapter();
+    }
 
-    void removeTargetDiscoveryListener(Consumer<TargetDiscoveryEvent> listener);
+    @Provides
+    @IntoSet
+    static PluggableTypeAdapter<?> provideJDPNodeTypeAdapter() {
+        return new JDPNodeTypeAdapter();
+    }
 
-    EnvironmentNode getDiscoveryTree();
+    @Provides
+    @IntoSet
+    static PluggableTypeAdapter<?> provideKubernetesNodeTypeAdapter() {
+        return new KubernetesNodeTypeAdapter();
+    }
 }

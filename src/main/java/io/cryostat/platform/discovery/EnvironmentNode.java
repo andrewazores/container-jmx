@@ -35,22 +35,51 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package io.cryostat.platform;
+package io.cryostat.platform.discovery;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.function.Consumer;
+import java.util.Collections;
+import java.util.Map;
+import java.util.SortedSet;
+import java.util.concurrent.ConcurrentSkipListSet;
 
-import io.cryostat.platform.discovery.EnvironmentNode;
+public class EnvironmentNode extends AbstractNode {
 
-public interface PlatformClient {
-    void start() throws IOException;
+    private final SortedSet<AbstractNode> children;
 
-    List<ServiceRef> listDiscoverableServices();
+    public EnvironmentNode(String name, NodeType nodeType) {
+        this(name, nodeType, Collections.emptyMap());
+    }
 
-    void addTargetDiscoveryListener(Consumer<TargetDiscoveryEvent> listener);
+    public EnvironmentNode(String name, NodeType nodeType, Map<String, String> labels) {
+        super(name, nodeType, labels);
+        this.children = new ConcurrentSkipListSet<>();
+    }
 
-    void removeTargetDiscoveryListener(Consumer<TargetDiscoveryEvent> listener);
+    public SortedSet<AbstractNode> getChildren() {
+        return Collections.unmodifiableSortedSet(children);
+    }
 
-    EnvironmentNode getDiscoveryTree();
+    public void addChildNode(AbstractNode child) {
+        this.children.add(child);
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = super.hashCode();
+        result = prime * result + ((children == null) ? 0 : children.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (!super.equals(obj)) return false;
+        if (getClass() != obj.getClass()) return false;
+        EnvironmentNode other = (EnvironmentNode) obj;
+        if (children == null) {
+            if (other.children != null) return false;
+        } else if (!children.equals(other.children)) return false;
+        return true;
+    }
 }

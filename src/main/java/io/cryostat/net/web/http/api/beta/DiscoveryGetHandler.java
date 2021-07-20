@@ -35,22 +35,64 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package io.cryostat.platform;
+package io.cryostat.net.web.http.api.beta;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.function.Consumer;
+import javax.inject.Inject;
 
+import io.cryostat.net.AuthManager;
+import io.cryostat.net.web.http.HttpMimeType;
+import io.cryostat.net.web.http.api.ApiVersion;
+import io.cryostat.net.web.http.api.v2.AbstractV2RequestHandler;
+import io.cryostat.net.web.http.api.v2.IntermediateResponse;
+import io.cryostat.net.web.http.api.v2.RequestParameters;
+import io.cryostat.platform.PlatformClient;
 import io.cryostat.platform.discovery.EnvironmentNode;
 
-public interface PlatformClient {
-    void start() throws IOException;
+import com.google.gson.Gson;
+import io.vertx.core.http.HttpMethod;
 
-    List<ServiceRef> listDiscoverableServices();
+class DiscoveryGetHandler extends AbstractV2RequestHandler<EnvironmentNode> {
 
-    void addTargetDiscoveryListener(Consumer<TargetDiscoveryEvent> listener);
+    private final PlatformClient platformClient;
 
-    void removeTargetDiscoveryListener(Consumer<TargetDiscoveryEvent> listener);
+    @Inject
+    DiscoveryGetHandler(AuthManager auth, PlatformClient platformClient, Gson gson) {
+        super(auth, gson);
+        this.platformClient = platformClient;
+    }
 
-    EnvironmentNode getDiscoveryTree();
+    @Override
+    public boolean requiresAuthentication() {
+        return true;
+    }
+
+    @Override
+    public ApiVersion apiVersion() {
+        return ApiVersion.BETA;
+    }
+
+    @Override
+    public HttpMethod httpMethod() {
+        return HttpMethod.GET;
+    }
+
+    @Override
+    public String path() {
+        return basePath() + "discovery";
+    }
+
+    @Override
+    public HttpMimeType mimeType() {
+        return HttpMimeType.JSON;
+    }
+
+    @Override
+    public boolean isAsync() {
+        return false;
+    }
+
+    @Override
+    public IntermediateResponse<EnvironmentNode> handle(RequestParameters params) throws Exception {
+        return new IntermediateResponse<EnvironmentNode>().body(platformClient.getDiscoveryTree());
+    }
 }

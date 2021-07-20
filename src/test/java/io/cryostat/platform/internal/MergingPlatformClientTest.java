@@ -41,12 +41,16 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.util.List;
+import java.util.Set;
 
 import javax.management.remote.JMXServiceURL;
 
 import io.cryostat.messaging.notifications.NotificationFactory;
 import io.cryostat.platform.PlatformClient;
 import io.cryostat.platform.ServiceRef;
+import io.cryostat.platform.discovery.BaseNodeType;
+import io.cryostat.platform.discovery.EnvironmentNode;
+import io.cryostat.platform.discovery.TargetNode;
 import io.cryostat.util.URIUtil;
 
 import org.hamcrest.MatcherAssert;
@@ -106,5 +110,41 @@ class MergingPlatformClientTest {
 
         Mockito.verify(clientA).listDiscoverableServices();
         Mockito.verify(clientB).listDiscoverableServices();
+    }
+
+    @Test
+    void testMergedDiscoveryTrees() throws MalformedURLException, URISyntaxException {
+        ServiceRef serviceA =
+                new ServiceRef(
+                        URIUtil.convert(
+                                new JMXServiceURL(
+                                        "service:jmx:rmi:///jndi/rmi://cryostat:9098/jmxrmi")),
+                        "ServiceA");
+        TargetNode nodeA = new TargetNode(DefaultPlatformClient.NODE_TYPE, serviceA);
+        EnvironmentNode envA = new EnvironmentNode("EnvA", BaseNodeType.REALM);
+        envA.addChildNode(nodeA);
+        ServiceRef serviceB =
+                new ServiceRef(
+                        URIUtil.convert(
+                                new JMXServiceURL(
+                                        "service:jmx:rmi:///jndi/rmi://cryostat:9099/jmxrmi")),
+                        "ServiceB");
+        TargetNode nodeB = new TargetNode(DefaultPlatformClient.NODE_TYPE, serviceB);
+        EnvironmentNode envB = new EnvironmentNode("EnvB", BaseNodeType.REALM);
+        envB.addChildNode(nodeB);
+
+        Mockito.when(clientA.getDiscoveryTree()).thenReturn(envA);
+        Mockito.when(clientB.getDiscoveryTree()).thenReturn(envB);
+
+        EnvironmentNode mergedNode = mergingClient.getDiscoveryTree();
+
+        Mockito.verify(clientA).getDiscoveryTree();
+        Mockito.verify(clientB).getDiscoveryTree();
+
+        MatcherAssert.assertThat(mergedNode.getName(), Matchers.equalTo("Universe"));
+        MatcherAssert.assertThat(mergedNode.getNodeType(), Matchers.equalTo(BaseNodeType.UNIVERSE));
+        MatcherAssert.assertThat(mergedNode.getLabels().size(), Matchers.equalTo(0));
+        MatcherAssert.assertThat(mergedNode.getChildren(), Matchers.hasSize(2));
+        MatcherAssert.assertThat(mergedNode.getChildren(), Matchers.equalTo(Set.of(envA, envB)));
     }
 }

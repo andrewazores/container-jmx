@@ -54,6 +54,8 @@ import io.cryostat.core.net.discovery.JvmDiscoveryClient.EventKind;
 import io.cryostat.core.sys.FileSystem;
 import io.cryostat.platform.ServiceRef;
 import io.cryostat.platform.TargetDiscoveryEvent;
+import io.cryostat.platform.discovery.BaseNodeType;
+import io.cryostat.platform.discovery.EnvironmentNode;
 import io.cryostat.util.URIUtil;
 
 import com.google.gson.Gson;
@@ -126,6 +128,38 @@ class CustomTargetPlatformClientTest {
         client.start();
         List<ServiceRef> result = client.listDiscoverableServices();
         MatcherAssert.assertThat(result, Matchers.equalTo(List.of(SERVICE_REF)));
+    }
+
+    @Test
+    void shouldProduceDiscoveryTree() throws IOException {
+        Mockito.verifyNoInteractions(fs);
+        Mockito.when(fs.isRegularFile(saveFile)).thenReturn(true);
+        Mockito.when(fs.isReadable(saveFile)).thenReturn(true);
+
+        BufferedReader reader =
+                new BufferedReader(new StringReader(gson.toJson(List.of(SERVICE_REF))));
+        Mockito.when(fs.readFile(saveFile)).thenReturn(reader);
+
+        client.start();
+
+        EnvironmentNode realmNode = client.getDiscoveryTree();
+
+        MatcherAssert.assertThat(realmNode.getName(), Matchers.equalTo("Custom Targets"));
+        MatcherAssert.assertThat(realmNode.getNodeType(), Matchers.equalTo(BaseNodeType.REALM));
+        MatcherAssert.assertThat(realmNode.getLabels().size(), Matchers.equalTo(0));
+        MatcherAssert.assertThat(realmNode.getChildren(), Matchers.hasSize(1));
+
+        MatcherAssert.assertThat(
+                realmNode.getChildren(),
+                Matchers.hasItem(
+                        Matchers.allOf(
+                                Matchers.hasProperty(
+                                        "name",
+                                        Matchers.equalTo(SERVICE_REF.getServiceUri().toString())),
+                                Matchers.hasProperty(
+                                        "nodeType",
+                                        Matchers.equalTo(CustomTargetPlatformClient.NODE_TYPE)),
+                                Matchers.hasProperty("target", Matchers.equalTo(SERVICE_REF)))));
     }
 
     @Test

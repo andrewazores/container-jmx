@@ -50,6 +50,8 @@ import io.cryostat.messaging.notifications.NotificationFactory;
 import io.cryostat.platform.PlatformClient;
 import io.cryostat.platform.ServiceRef;
 import io.cryostat.platform.TargetDiscoveryEvent;
+import io.cryostat.platform.discovery.BaseNodeType;
+import io.cryostat.platform.discovery.EnvironmentNode;
 
 public class MergingPlatformClient implements PlatformClient, Consumer<TargetDiscoveryEvent> {
 
@@ -114,5 +116,12 @@ public class MergingPlatformClient implements PlatformClient, Consumer<TargetDis
     @Override
     public void accept(TargetDiscoveryEvent event) {
         this.listeners.forEach(l -> l.accept(event));
+    }
+
+    @Override
+    public EnvironmentNode getDiscoveryTree() {
+        EnvironmentNode universe = new EnvironmentNode("Universe", BaseNodeType.UNIVERSE);
+        this.clients.forEach(client -> universe.addChildNode(client.getDiscoveryTree()));
+        return universe;
     }
 }

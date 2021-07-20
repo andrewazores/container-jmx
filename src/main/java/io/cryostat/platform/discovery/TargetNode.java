@@ -35,22 +35,50 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package io.cryostat.platform;
+package io.cryostat.platform.discovery;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.function.Consumer;
+import java.util.Collections;
+import java.util.Map;
 
-import io.cryostat.platform.discovery.EnvironmentNode;
+import io.cryostat.platform.ServiceRef;
 
-public interface PlatformClient {
-    void start() throws IOException;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
-    List<ServiceRef> listDiscoverableServices();
+public class TargetNode extends AbstractNode {
+    @SuppressFBWarnings("URF_UNREAD_FIELD")
+    private final ServiceRef target;
 
-    void addTargetDiscoveryListener(Consumer<TargetDiscoveryEvent> listener);
+    public TargetNode(NodeType nodeType, ServiceRef target) {
+        super(target.getServiceUri().toString(), nodeType, Collections.emptyMap());
+        this.target = target;
+    }
 
-    void removeTargetDiscoveryListener(Consumer<TargetDiscoveryEvent> listener);
+    public TargetNode(NodeType nodeType, ServiceRef target, Map<String, String> labels) {
+        super(target.getServiceUri().toString(), nodeType, labels);
+        this.target = target;
+    }
 
-    EnvironmentNode getDiscoveryTree();
+    public ServiceRef getTarget() {
+        return target;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = super.hashCode();
+        result = prime * result + ((target == null) ? 0 : target.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (!super.equals(obj)) return false;
+        if (getClass() != obj.getClass()) return false;
+        TargetNode other = (TargetNode) obj;
+        if (target == null) {
+            if (other.target != null) return false;
+        } else if (!target.equals(other.target)) return false;
+        return true;
+    }
 }

@@ -41,6 +41,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Set;
 
 import javax.inject.Named;
 import javax.inject.Singleton;
@@ -62,6 +63,7 @@ import io.cryostat.templates.TemplatesModule;
 import io.cryostat.util.GsonJmxServiceUrlAdapter;
 import io.cryostat.util.HttpMimeTypeAdapter;
 import io.cryostat.util.PathTypeAdapter;
+import io.cryostat.util.PluggableTypeAdapter;
 import io.cryostat.util.RuleDeserializer;
 
 import com.google.gson.Gson;
@@ -109,18 +111,28 @@ public abstract class MainModule {
         };
     }
 
+    // testing-only when extra adapters aren't needed
+    public static Gson provideGson(Logger logger) {
+        return provideGson(Set.of(), logger);
+    }
+
     // public since this is useful to use directly in tests
     @Provides
     @Singleton
-    public static Gson provideGson(Logger logger) {
-        return new GsonBuilder()
-                .serializeNulls()
-                .disableHtmlEscaping()
-                .registerTypeAdapter(JMXServiceURL.class, new GsonJmxServiceUrlAdapter(logger))
-                .registerTypeAdapter(HttpMimeType.class, new HttpMimeTypeAdapter())
-                .registerTypeHierarchyAdapter(Path.class, new PathTypeAdapter())
-                .registerTypeAdapter(Rule.class, new RuleDeserializer())
-                .create();
+    public static Gson provideGson(Set<PluggableTypeAdapter<?>> extraAdapters, Logger logger) {
+        GsonBuilder builder =
+                new GsonBuilder()
+                        .serializeNulls()
+                        .disableHtmlEscaping()
+                        .registerTypeAdapter(
+                                JMXServiceURL.class, new GsonJmxServiceUrlAdapter(logger))
+                        .registerTypeAdapter(HttpMimeType.class, new HttpMimeTypeAdapter())
+                        .registerTypeHierarchyAdapter(Path.class, new PathTypeAdapter())
+                        .registerTypeAdapter(Rule.class, new RuleDeserializer());
+        for (PluggableTypeAdapter<?> pta : extraAdapters) {
+            builder = builder.registerTypeAdapter(pta.getAdaptedType(), pta);
+        }
+        return builder.create();
     }
 
     @SuppressFBWarnings("DMI_HARDCODED_ABSOLUTE_FILENAME")

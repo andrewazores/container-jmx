@@ -54,11 +54,17 @@ import io.cryostat.MainModule;
 import io.cryostat.core.net.discovery.JvmDiscoveryClient.EventKind;
 import io.cryostat.core.sys.FileSystem;
 import io.cryostat.platform.ServiceRef;
+import io.cryostat.platform.discovery.BaseNodeType;
+import io.cryostat.platform.discovery.EnvironmentNode;
+import io.cryostat.platform.discovery.NodeType;
+import io.cryostat.platform.discovery.TargetNode;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 public class CustomTargetPlatformClient extends AbstractPlatformClient {
+
+    public static final CustomTargetNodeType NODE_TYPE = new CustomTargetNodeType();
 
     static final String SAVEFILE_NAME = "custom_targets.json";
 
@@ -128,5 +134,30 @@ public class CustomTargetPlatformClient extends AbstractPlatformClient {
     @Override
     public List<ServiceRef> listDiscoverableServices() {
         return new ArrayList<>(targets);
+    }
+
+    @Override
+    public EnvironmentNode getDiscoveryTree() {
+        EnvironmentNode customTargetsNode =
+                new EnvironmentNode("Custom Targets", BaseNodeType.REALM);
+        targets.forEach(sr -> customTargetsNode.addChildNode(new TargetNode(NODE_TYPE, sr)));
+        return customTargetsNode;
+    }
+
+    public static class CustomTargetNodeType implements NodeType {
+
+        private CustomTargetNodeType() {}
+
+        public static final String KIND = "CustomTarget";
+
+        @Override
+        public String getKind() {
+            return KIND;
+        }
+
+        @Override
+        public int ordinal() {
+            return 0;
+        }
     }
 }

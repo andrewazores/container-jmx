@@ -35,22 +35,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package io.cryostat.platform;
+package itest.util.http;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.function.Consumer;
+public class V2Response<T> {
+    public Meta meta;
+    public T data;
 
-import io.cryostat.platform.discovery.EnvironmentNode;
-
-public interface PlatformClient {
-    void start() throws IOException;
-
-    List<ServiceRef> listDiscoverableServices();
-
-    void addTargetDiscoveryListener(Consumer<TargetDiscoveryEvent> listener);
-
-    void removeTargetDiscoveryListener(Consumer<TargetDiscoveryEvent> listener);
-
-    EnvironmentNode getDiscoveryTree();
+    public static class Meta {
+        public String type;
+        public String status;
+    }
 }

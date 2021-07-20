@@ -67,7 +67,7 @@ class TargetRecordingOptionsListGetHandler
     }
 
     @Override
-    boolean requiresAuthentication() {
+    public boolean requiresAuthentication() {
         return true;
     }
 
@@ -87,7 +87,7 @@ class TargetRecordingOptionsListGetHandler
     }
 
     @Override
-    HttpMimeType mimeType() {
+    public HttpMimeType mimeType() {
         return HttpMimeType.JSON;
     }
 
@@ -97,8 +97,8 @@ class TargetRecordingOptionsListGetHandler
     }
 
     @Override
-    IntermediateResponse<List<SerializableOptionDescriptor>> handle(RequestParameters requestParams)
-            throws Exception {
+    public IntermediateResponse<List<SerializableOptionDescriptor>> handle(
+            RequestParameters requestParams) throws Exception {
         List<SerializableOptionDescriptor> options =
                 connectionManager.executeConnectedTask(
                         getConnectionDescriptorFromParams(requestParams),

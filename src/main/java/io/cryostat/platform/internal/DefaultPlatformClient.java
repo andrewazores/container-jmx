@@ -54,9 +54,16 @@ import io.cryostat.core.net.discovery.JvmDiscoveryClient;
 import io.cryostat.core.net.discovery.JvmDiscoveryClient.JvmDiscoveryEvent;
 import io.cryostat.platform.ServiceRef;
 import io.cryostat.platform.ServiceRef.AnnotationKey;
+import io.cryostat.platform.discovery.BaseNodeType;
+import io.cryostat.platform.discovery.EnvironmentNode;
+import io.cryostat.platform.discovery.NodeType;
+import io.cryostat.platform.discovery.TargetNode;
 import io.cryostat.util.URIUtil;
 
-class DefaultPlatformClient extends AbstractPlatformClient implements Consumer<JvmDiscoveryEvent> {
+public class DefaultPlatformClient extends AbstractPlatformClient
+        implements Consumer<JvmDiscoveryEvent> {
+
+    public static final JDPNodeType NODE_TYPE = new JDPNodeType();
 
     private final Logger logger;
     private final JvmDiscoveryClient discoveryClient;
@@ -108,5 +115,31 @@ class DefaultPlatformClient extends AbstractPlatformClient implements Consumer<J
                         AnnotationKey.HOST, rmiTarget.getHost(),
                         AnnotationKey.PORT, Integer.toString(rmiTarget.getPort())));
         return serviceRef;
+    }
+
+    @Override
+    public EnvironmentNode getDiscoveryTree() {
+        EnvironmentNode root = new EnvironmentNode("JDP", BaseNodeType.REALM);
+        List<ServiceRef> targets = listDiscoverableServices();
+        for (ServiceRef target : targets) {
+            TargetNode targetNode = new TargetNode(NODE_TYPE, target);
+            root.addChildNode(targetNode);
+        }
+        return root;
+    }
+
+    public static class JDPNodeType implements NodeType {
+
+        public static final String KIND = "JVM";
+
+        @Override
+        public String getKind() {
+            return KIND;
+        }
+
+        @Override
+        public int ordinal() {
+            return 0;
+        }
     }
 }
