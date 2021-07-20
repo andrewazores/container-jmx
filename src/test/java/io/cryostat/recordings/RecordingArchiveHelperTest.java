@@ -41,7 +41,11 @@ import java.io.InputStream;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 import javax.inject.Provider;
 import javax.management.remote.JMXServiceURL;
@@ -61,6 +65,7 @@ import io.cryostat.net.reports.ReportService;
 import io.cryostat.net.web.WebServer;
 import io.cryostat.platform.PlatformClient;
 import io.cryostat.platform.ServiceRef;
+import io.cryostat.rules.ArchivedRecordingInfo;
 import io.cryostat.util.URIUtil;
 
 import org.hamcrest.MatcherAssert;
@@ -126,12 +131,18 @@ class RecordingArchiveHelperTest {
                         });
         Mockito.when(connection.getService()).thenReturn(service);
         Mockito.when(service.getAvailableRecordings()).thenReturn(List.of());
-
+        
         Assertions.assertThrows(
-                RecordingNotFoundException.class,
-                () ->
-                        recordingArchiveHelper.saveRecording(
-                                new ConnectionDescriptor(targetId), recordingName));
+                ExecutionException.class,
+                () -> {
+                        try {
+                                recordingArchiveHelper.saveRecording(
+                                        new ConnectionDescriptor(targetId), recordingName).get();
+                        } catch (ExecutionException ee) {
+                                Assertions.assertTrue(ee.getCause() instanceof RecordingNotFoundException);
+                                throw ee;
+                        }
+                });
     }
 
     @Test
@@ -191,7 +202,7 @@ class RecordingArchiveHelperTest {
 
         String saveName =
                 recordingArchiveHelper.saveRecording(
-                        new ConnectionDescriptor(targetId), recordingName);
+                        new ConnectionDescriptor(targetId), recordingName).get();
 
         String timestamp = now.truncatedTo(ChronoUnit.SECONDS).toString().replaceAll("[-:]+", "");
         MatcherAssert.assertThat(
@@ -256,7 +267,7 @@ class RecordingArchiveHelperTest {
 
         String saveName =
                 recordingArchiveHelper.saveRecording(
-                        new ConnectionDescriptor(targetId), recordingName);
+                        new ConnectionDescriptor(targetId), recordingName).get();
 
         String timestamp = now.truncatedTo(ChronoUnit.SECONDS).toString().replaceAll("[-:]+", "");
         MatcherAssert.assertThat(
@@ -316,7 +327,7 @@ class RecordingArchiveHelperTest {
 
         String saveName =
                 recordingArchiveHelper.saveRecording(
-                        new ConnectionDescriptor(targetId), recordingName);
+                        new ConnectionDescriptor(targetId), recordingName).get();
 
         String timestamp = now.truncatedTo(ChronoUnit.SECONDS).toString().replaceAll("[-:]+", "");
         MatcherAssert.assertThat(
@@ -382,7 +393,7 @@ class RecordingArchiveHelperTest {
 
         String saveName =
                 recordingArchiveHelper.saveRecording(
-                        new ConnectionDescriptor(targetId), recordingName);
+                        new ConnectionDescriptor(targetId), recordingName).get();
 
         String timestamp = now.truncatedTo(ChronoUnit.SECONDS).toString().replaceAll("[-:]+", "");
         MatcherAssert.assertThat(
@@ -446,7 +457,7 @@ class RecordingArchiveHelperTest {
 
         String saveName =
                 recordingArchiveHelper.saveRecording(
-                        new ConnectionDescriptor(targetId), recordingName);
+                        new ConnectionDescriptor(targetId), recordingName).get();
 
         String timestamp = now.truncatedTo(ChronoUnit.SECONDS).toString().replaceAll("[-:]+", "");
         MatcherAssert.assertThat(
@@ -474,7 +485,7 @@ class RecordingArchiveHelperTest {
         Mockito.when(descriptor.getName()).thenReturn(recordingName);
         Mockito.when(service.getAvailableRecordings()).thenReturn(List.of(descriptor));
 
-        recordingArchiveHelper.deleteRecording(connectionDescriptor, recordingName);
+        recordingArchiveHelper.deleteRecording(connectionDescriptor, recordingName).get();
 
         Mockito.verify(service).close(descriptor);
 

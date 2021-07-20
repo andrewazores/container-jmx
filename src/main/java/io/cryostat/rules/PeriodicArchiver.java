@@ -102,7 +102,7 @@ class PeriodicArchiver implements Runnable {
                 Base32 base32 = new Base32();
                 String serviceUri = serviceRef.getServiceUri().toString();
                 List<ArchivedRecordingInfo> archivedRecordings =
-                        recordingArchiveHelper.getRecordings();
+                        recordingArchiveHelper.getRecordings().get();
                 Iterator<ArchivedRecordingInfo> it = archivedRecordings.iterator();
 
                 while (it.hasNext()) {
@@ -145,13 +145,14 @@ class PeriodicArchiver implements Runnable {
         ConnectionDescriptor connectionDescriptor =
                 new ConnectionDescriptor(serviceRef, credentialsManager.getCredentials(serviceRef));
 
-        String saveName = recordingArchiveHelper.saveRecording(connectionDescriptor, recordingName);
+        String saveName = recordingArchiveHelper.saveRecording(connectionDescriptor, recordingName).get();
         this.previousRecordings.add(saveName);
     }
+    
 
     private void pruneArchive(String recordingName) throws Exception {
         ConnectionDescriptor connectionDescriptor = new ConnectionDescriptor(serviceRef);
-        recordingArchiveHelper.deleteRecording(connectionDescriptor, recordingName);
+        recordingArchiveHelper.deleteRecording(connectionDescriptor, recordingName).get();
         previousRecordings.remove(recordingName);
     }
 }

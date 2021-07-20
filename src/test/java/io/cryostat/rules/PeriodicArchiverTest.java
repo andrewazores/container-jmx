@@ -38,7 +38,11 @@
 package io.cryostat.rules;
 
 import java.net.URI;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Queue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -98,9 +102,14 @@ class PeriodicArchiverTest {
 
     @Test
     void testPerformArchival() throws Exception {
+        CompletableFuture<List<ArchivedRecordingInfo>> listFuture = new CompletableFuture<>();
+        listFuture.complete(new ArrayList<>());
+        Mockito.when(recordingArchiveHelper.getRecordings()).thenReturn(listFuture);
 
+        CompletableFuture<String> stringFuture = new CompletableFuture<>();
+        stringFuture.complete("someRecording.jfr");
         Mockito.when(recordingArchiveHelper.saveRecording(Mockito.any(), Mockito.anyString()))
-                .thenReturn("someRecording.jfr");
+                .thenReturn(stringFuture);
 
         archiver.run();
 
@@ -110,6 +119,9 @@ class PeriodicArchiverTest {
 
     @Test
     void testNotifyOnExecutionFailure() throws Exception {
+        CompletableFuture<List<ArchivedRecordingInfo>> listFuture = new CompletableFuture<>();
+        listFuture.complete(new ArrayList<>());
+        Mockito.when(recordingArchiveHelper.getRecordings()).thenReturn(listFuture);
 
         Mockito.doThrow(ExecutionException.class)
                 .when(recordingArchiveHelper)
@@ -123,6 +135,9 @@ class PeriodicArchiverTest {
 
     @Test
     void testNotifyOnConnectionFailure() throws Exception {
+        CompletableFuture<List<ArchivedRecordingInfo>> listFuture = new CompletableFuture<>();
+        listFuture.complete(new ArrayList<>());
+        Mockito.when(recordingArchiveHelper.getRecordings()).thenReturn(listFuture);
 
         Mockito.doThrow(SecurityException.class)
                 .when(recordingArchiveHelper)
@@ -136,9 +151,21 @@ class PeriodicArchiverTest {
 
     @Test
     void testPruneArchive() throws Exception {
-        // get the archiver into a state where it has reached its limit of preserved recordings
+        CompletableFuture<List<ArchivedRecordingInfo>> listFuture = new CompletableFuture<>();
+        listFuture.complete(new ArrayList<>());
+        Mockito.when(recordingArchiveHelper.getRecordings()).thenReturn(listFuture);
+
+        CompletableFuture<String> stringFuture = new CompletableFuture<>();
+        stringFuture.complete("someRecording.jfr");
         Mockito.when(recordingArchiveHelper.saveRecording(Mockito.any(), Mockito.anyString()))
-                .thenReturn("someRecording.jfr");
+                .thenReturn(stringFuture);
+
+        CompletableFuture<Void> voidFuture = new CompletableFuture<>();
+        voidFuture.complete(null);
+        Mockito.when(recordingArchiveHelper.deleteRecording(Mockito.any(), Mockito.anyString()))
+                 .thenReturn(voidFuture);
+
+        // get the archiver into a state where it has reached its limit of preserved recordings
         for (int i = 0; i < rule.getPreservedArchives(); i++) {
             archiver.run();
         }

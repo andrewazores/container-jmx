@@ -43,6 +43,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import org.openjdk.jmc.rjmx.services.jfr.IFlightRecorderService;
 
@@ -114,8 +115,10 @@ class TargetRecordingPatchSaveTest {
         Instant now = Instant.now();
         String timestamp = now.truncatedTo(ChronoUnit.SECONDS).toString().replaceAll("[-:]+", "");
 
+        CompletableFuture<String> future = new CompletableFuture<>();
+        future.complete("some-Alias-2_someRecording_" + timestamp + ".jfr");
         Mockito.when(recordingArchiveHelper.saveRecording(Mockito.any(), Mockito.any()))
-                .thenReturn("some-Alias-2_someRecording_" + timestamp + ".jfr");
+                .thenReturn(future);
 
         patchSave.handle(ctx, new ConnectionDescriptor(targetId));
 

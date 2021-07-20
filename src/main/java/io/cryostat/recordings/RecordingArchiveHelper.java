@@ -48,6 +48,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 import javax.inject.Named;
@@ -101,10 +103,13 @@ public class RecordingArchiveHelper {
         this.reportService = reportService;
     }
 
-    public String saveRecording(ConnectionDescriptor connectionDescriptor, String recordingName)
+    public Future<String> saveRecording(ConnectionDescriptor connectionDescriptor, String recordingName)
             throws Exception {
 
-        String saveName =
+        CompletableFuture<String> future = new CompletableFuture<>();
+
+        try {
+            String saveName =
                 targetConnectionManager.executeConnectedTask(
                         connectionDescriptor,
                         connection -> {
@@ -117,61 +122,86 @@ public class RecordingArchiveHelper {
                                 throw new RecordingNotFoundException(recordingName);
                             }
                         });
-
-        return saveName;
+            future.complete(saveName);
+        } catch (RecordingNotFoundException e) {
+            future.completeExceptionally(e);
+        }
+        
+        return future;
     }
 
-    public void deleteRecording(ConnectionDescriptor connectionDescriptor, String recordingName)
+    public Future<Void> deleteRecording(ConnectionDescriptor connectionDescriptor, String recordingName)
             throws Exception {
 
-        targetConnectionManager.executeConnectedTask(
-                connectionDescriptor,
-                connection -> {
-                    Optional<IRecordingDescriptor> descriptor =
-                            this.getDescriptorByName(connection, recordingName);
+        CompletableFuture<Void> future = new CompletableFuture<>();
 
-                    if (descriptor.isPresent()) {
-                        connection.getService().close(descriptor.get());
-                        reportService.delete(connectionDescriptor, recordingName);
-                    } else {
-                        throw new RecordingNotFoundException(recordingName);
-                    }
-                    return null;
-                });
+        try {
+            targetConnectionManager.executeConnectedTask(
+                    connectionDescriptor,
+                    connection -> {
+                        Optional<IRecordingDescriptor> descriptor =
+                                this.getDescriptorByName(connection, recordingName);
+
+                        if (descriptor.isPresent()) {
+                            connection.getService().close(descriptor.get());
+                            reportService.delete(connectionDescriptor, recordingName);
+                        } else {
+                            throw new RecordingNotFoundException(recordingName);
+                        }
+                        return null;
+                    });
+            future.complete(null);
+        } catch (RecordingNotFoundException e) {
+            future.completeExceptionally(e);
+        }
+
+        return future;
     }
 
-    public List<ArchivedRecordingInfo> getRecordings() throws Exception {
-        if (!fs.exists(recordingsPath)) {
-            throw new ArchivePathException(recordingsPath.toString(), "does not exist");
+    public Future<List<ArchivedRecordingInfo>> getRecordings() throws Exception {
+
+        CompletableFuture<List<ArchivedRecordingInfo>> future = new CompletableFuture<>();
+
+        try {
+            if (!fs.exists(recordingsPath)) {
+                throw new ArchivePathException(recordingsPath.toString(), "does not exist");
+            }
+            if (!fs.isReadable(recordingsPath)) {
+                throw new ArchivePathException(recordingsPath.toString(), "is not readable");
+            }
+            if (!fs.isDirectory(recordingsPath)) {
+                throw new ArchivePathException(recordingsPath.toString(), "is not a directory");
+            }
+            WebServer webServer = webServerProvider.get();
+            List<String> files = this.fs.listDirectoryChildren(recordingsPath);
+
+            List<ArchivedRecordingInfo> archivedRecordings = 
+                                                files.stream()
+                                                        .map(
+                                                                file -> {
+                                                                    String encodedServiceUri = Path.of(file).getParent().toString();
+                                                                    String name = Path.of(file).getFileName().toString();
+                                                                    try {
+                                                                        return new ArchivedRecordingInfo(
+                                                                                encodedServiceUri,
+                                                                                name,
+                                                                                webServer.getArchivedReportURL(name),
+                                                                                webServer.getArchivedDownloadURL(name));
+                                                                    } catch (SocketException
+                                                                            | UnknownHostException
+                                                                            | URISyntaxException e) {
+                                                                        logger.warn(e);
+                                                                        return null;
+                                                                    }
+                                                                })
+                                                        .filter(Objects::nonNull)
+                                                        .collect(Collectors.toList());
+            future.complete(archivedRecordings);
+        } catch (ArchivePathException e) {
+            future.completeExceptionally(e);
         }
-        if (!fs.isReadable(recordingsPath)) {
-            throw new ArchivePathException(recordingsPath.toString(), "is not readable");
-        }
-        if (!fs.isDirectory(recordingsPath)) {
-            throw new ArchivePathException(recordingsPath.toString(), "is not a directory");
-        }
-        WebServer webServer = webServerProvider.get();
-        List<String> files = this.fs.listDirectoryChildren(recordingsPath);
-        return files.stream()
-                .map(
-                        file -> {
-                            String encodedServiceUri = Path.of(file).getParent().toString();
-                            String name = Path.of(file).getFileName().toString();
-                            try {
-                                return new ArchivedRecordingInfo(
-                                        encodedServiceUri,
-                                        name,
-                                        webServer.getArchivedReportURL(name),
-                                        webServer.getArchivedDownloadURL(name));
-                            } catch (SocketException
-                                    | UnknownHostException
-                                    | URISyntaxException e) {
-                                logger.warn(e);
-                                return null;
-                            }
-                        })
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+
+        return future;     
     }
 
     private String writeRecordingToDestination(
@@ -222,7 +252,7 @@ public class RecordingArchiveHelper {
         return destination;
     }
 
-    public Optional<IRecordingDescriptor> getDescriptorByName(
+    private Optional<IRecordingDescriptor> getDescriptorByName(
             JFRConnection connection, String recordingName) throws Exception {
         return connection.getService().getAvailableRecordings().stream()
                 .filter(recording -> recording.getName().equals(recordingName))
