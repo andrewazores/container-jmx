@@ -35,64 +35,35 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package io.cryostat.net.web.http.api.v1;
+package io.cryostat.rules;
 
-import java.util.List;
+public class ArchivedRecordingInfo {
+    private final String encodedServiceUri;
+    private final String name;
+    private final String reportUrl;
+    private final String downloadUrl;
 
-import javax.inject.Inject;
-
-import io.cryostat.net.AuthManager;
-import io.cryostat.net.web.http.AbstractAuthenticatedRequestHandler;
-import io.cryostat.net.web.http.api.ApiVersion;
-import io.cryostat.recordings.RecordingArchiveHelper;
-import io.cryostat.rules.ArchivePathException;
-import io.cryostat.rules.ArchivedRecordingInfo;
-
-import com.google.gson.Gson;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.ext.web.RoutingContext;
-import io.vertx.ext.web.handler.impl.HttpStatusException;
-
-class RecordingsGetHandler extends AbstractAuthenticatedRequestHandler {
-
-    private final RecordingArchiveHelper recordingArchiveHelper;
-    private final Gson gson;
-
-    @Inject
-    RecordingsGetHandler(
-            AuthManager auth, RecordingArchiveHelper recordingArchiveHelper, Gson gson) {
-        super(auth);
-        this.recordingArchiveHelper = recordingArchiveHelper;
-        this.gson = gson;
+    public ArchivedRecordingInfo(
+            String encodedServiceUri, String name, String reportUrl, String downloadUrl) {
+        this.encodedServiceUri = encodedServiceUri;
+        this.name = name;
+        this.reportUrl = reportUrl;
+        this.downloadUrl = downloadUrl;
     }
 
-    @Override
-    public ApiVersion apiVersion() {
-        return ApiVersion.V1;
+    public String getEncodedServiceUri() {
+        return this.encodedServiceUri;
     }
 
-    @Override
-    public HttpMethod httpMethod() {
-        return HttpMethod.GET;
+    public String getName() {
+        return this.name;
     }
 
-    @Override
-    public String path() {
-        return basePath() + "recordings";
+    public String getReportUrl() {
+        return this.reportUrl;
     }
 
-    @Override
-    public boolean isAsync() {
-        return false;
-    }
-
-    @Override
-    public void handleAuthenticated(RoutingContext ctx) throws Exception {
-        try {
-            List<ArchivedRecordingInfo> result = recordingArchiveHelper.getRecordings();
-            ctx.response().end(gson.toJson(result));
-        } catch (ArchivePathException e) {
-            throw new HttpStatusException(501, e.getMessage());
-        }
+    public String getDownloadUrl() {
+        return this.downloadUrl;
     }
 }

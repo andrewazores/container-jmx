@@ -39,6 +39,7 @@ package io.cryostat.net.web.http.api.v1;
 
 import java.nio.file.Path;
 
+import io.cryostat.core.sys.FileSystem;
 import io.cryostat.net.AuthManager;
 
 import io.vertx.core.http.HttpMethod;
@@ -56,10 +57,11 @@ class RecordingGetHandlerTest {
     RecordingGetHandler handler;
     @Mock AuthManager authManager;
     @Mock Path savedRecordingsPath;
+    @Mock FileSystem fs;
 
     @BeforeEach
     void setup() {
-        this.handler = new RecordingGetHandler(authManager, savedRecordingsPath);
+        this.handler = new RecordingGetHandler(authManager, savedRecordingsPath, fs);
     }
 
     @Test

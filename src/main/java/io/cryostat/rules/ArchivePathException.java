@@ -35,64 +35,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package io.cryostat.net.web.http.api.v1;
+package io.cryostat.rules;
 
-import java.util.List;
-
-import javax.inject.Inject;
-
-import io.cryostat.net.AuthManager;
-import io.cryostat.net.web.http.AbstractAuthenticatedRequestHandler;
-import io.cryostat.net.web.http.api.ApiVersion;
-import io.cryostat.recordings.RecordingArchiveHelper;
-import io.cryostat.rules.ArchivePathException;
-import io.cryostat.rules.ArchivedRecordingInfo;
-
-import com.google.gson.Gson;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.ext.web.RoutingContext;
-import io.vertx.ext.web.handler.impl.HttpStatusException;
-
-class RecordingsGetHandler extends AbstractAuthenticatedRequestHandler {
-
-    private final RecordingArchiveHelper recordingArchiveHelper;
-    private final Gson gson;
-
-    @Inject
-    RecordingsGetHandler(
-            AuthManager auth, RecordingArchiveHelper recordingArchiveHelper, Gson gson) {
-        super(auth);
-        this.recordingArchiveHelper = recordingArchiveHelper;
-        this.gson = gson;
-    }
-
-    @Override
-    public ApiVersion apiVersion() {
-        return ApiVersion.V1;
-    }
-
-    @Override
-    public HttpMethod httpMethod() {
-        return HttpMethod.GET;
-    }
-
-    @Override
-    public String path() {
-        return basePath() + "recordings";
-    }
-
-    @Override
-    public boolean isAsync() {
-        return false;
-    }
-
-    @Override
-    public void handleAuthenticated(RoutingContext ctx) throws Exception {
-        try {
-            List<ArchivedRecordingInfo> result = recordingArchiveHelper.getRecordings();
-            ctx.response().end(gson.toJson(result));
-        } catch (ArchivePathException e) {
-            throw new HttpStatusException(501, e.getMessage());
-        }
+public class ArchivePathException extends Exception {
+    public ArchivePathException(String path, String reason) {
+        super(String.format("Archive path %s %s", path, reason));
     }
 }

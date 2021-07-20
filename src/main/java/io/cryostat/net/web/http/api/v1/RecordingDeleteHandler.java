@@ -103,16 +103,16 @@ public class RecordingDeleteHandler extends AbstractAuthenticatedRequestHandler 
     public void handleAuthenticated(RoutingContext ctx) throws Exception {
         String recordingName = ctx.pathParam("recordingName");
         fs.listDirectoryChildren(savedRecordingsPath).stream()
-                .filter(saved -> saved.equals(recordingName))
+                .filter(file -> recordingName.equals(Path.of(file).getFileName().toString()))
                 .map(savedRecordingsPath::resolve)
                 .findFirst()
                 .ifPresentOrElse(
-                        path -> {
+                        filePath -> {
                             try {
-                                if (!fs.exists(path)) {
+                                if (!fs.exists(filePath)) {
                                     throw new HttpStatusException(404, recordingName);
                                 }
-                                fs.deleteIfExists(path);
+                                fs.deleteIfExists(filePath);
                                 notificationFactory
                                         .createBuilder()
                                         .metaCategory(NOTIFICATION_CATEGORY)

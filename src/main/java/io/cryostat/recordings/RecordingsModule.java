@@ -40,15 +40,18 @@ package io.cryostat.recordings;
 import java.nio.file.Path;
 
 import javax.inject.Named;
+import javax.inject.Provider;
 import javax.inject.Singleton;
 
 import io.cryostat.MainModule;
 import io.cryostat.commands.internal.EventOptionsBuilder;
+import io.cryostat.core.log.Logger;
 import io.cryostat.core.sys.Clock;
 import io.cryostat.core.sys.FileSystem;
 import io.cryostat.messaging.notifications.NotificationFactory;
 import io.cryostat.net.TargetConnectionManager;
 import io.cryostat.net.reports.ReportService;
+import io.cryostat.net.web.WebServer;
 import io.cryostat.platform.PlatformClient;
 
 import dagger.Module;
@@ -71,12 +74,21 @@ public abstract class RecordingsModule {
     @Singleton
     static RecordingArchiveHelper provideRecordingArchiveHelper(
             FileSystem fs,
+            Provider<WebServer> webServerProvider,
+            Logger logger,
             @Named(MainModule.RECORDINGS_PATH) Path recordingsPath,
             TargetConnectionManager targetConnectionManager,
             Clock clock,
             PlatformClient platformClient,
             ReportService reportService) {
         return new RecordingArchiveHelper(
-                fs, recordingsPath, targetConnectionManager, clock, platformClient, reportService);
+                fs,
+                webServerProvider,
+                logger,
+                recordingsPath,
+                targetConnectionManager,
+                clock,
+                platformClient,
+                reportService);
     }
 }

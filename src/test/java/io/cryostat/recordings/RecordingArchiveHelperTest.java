@@ -43,6 +43,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
+import javax.inject.Provider;
 import javax.management.remote.JMXServiceURL;
 
 import org.openjdk.jmc.common.unit.IQuantity;
@@ -50,12 +51,14 @@ import org.openjdk.jmc.common.unit.QuantityConversionException;
 import org.openjdk.jmc.rjmx.services.jfr.IFlightRecorderService;
 import org.openjdk.jmc.rjmx.services.jfr.IRecordingDescriptor;
 
+import io.cryostat.core.log.Logger;
 import io.cryostat.core.net.JFRConnection;
 import io.cryostat.core.sys.Clock;
 import io.cryostat.core.sys.FileSystem;
 import io.cryostat.net.ConnectionDescriptor;
 import io.cryostat.net.TargetConnectionManager;
 import io.cryostat.net.reports.ReportService;
+import io.cryostat.net.web.WebServer;
 import io.cryostat.platform.PlatformClient;
 import io.cryostat.platform.ServiceRef;
 import io.cryostat.util.URIUtil;
@@ -76,9 +79,11 @@ import org.mockito.stubbing.Answer;
 class RecordingArchiveHelperTest {
 
     RecordingArchiveHelper recordingArchiveHelper;
-    @Mock FileSystem fs;
-    @Mock Path recordingsPath;
     @Mock TargetConnectionManager targetConnectionManager;
+    @Mock FileSystem fs;
+    @Mock Provider<WebServer> webServerProvider;
+    @Mock Logger logger;
+    @Mock Path recordingsPath;
     @Mock Clock clock;
     @Mock PlatformClient platformClient;
     @Mock ReportService reportService;
@@ -94,6 +99,8 @@ class RecordingArchiveHelperTest {
         this.recordingArchiveHelper =
                 new RecordingArchiveHelper(
                         fs,
+                        webServerProvider,
+                        logger,
                         recordingsPath,
                         targetConnectionManager,
                         clock,
@@ -520,4 +527,69 @@ class RecordingArchiveHelperTest {
         Mockito.lenient().when(descriptor.getMaxAge()).thenReturn(zeroQuantity);
         return descriptor;
     }
+
+    //     @Test
+    //     void shouldRespondWithInternalErrorIfExceptionThrown() throws IOException {
+    //         RoutingContext ctx = Mockito.mock(RoutingContext.class);
+
+    //         Mockito.when(fs.exists(Mockito.any())).thenReturn(true);
+    //         Mockito.when(fs.isReadable(Mockito.any())).thenReturn(true);
+    //         Mockito.when(fs.isDirectory(Mockito.any())).thenReturn(true);
+    //         Mockito.when(fs.listDirectoryChildren(Mockito.any())).thenThrow(IOException.class);
+
+    //         Assertions.assertThrows(IOException.class, () -> handler.handleAuthenticated(ctx));
+    //     }
+
+    //     @Test
+    //     void shouldRespondWithListOfRecordings() throws Exception {
+    //         RoutingContext ctx = Mockito.mock(RoutingContext.class);
+    //         HttpServerResponse resp = Mockito.mock(HttpServerResponse.class);
+    //         Mockito.when(ctx.response()).thenReturn(resp);
+
+    //         Mockito.when(fs.exists(Mockito.any())).thenReturn(true);
+    //         Mockito.when(fs.isReadable(Mockito.any())).thenReturn(true);
+    //         Mockito.when(fs.isDirectory(Mockito.any())).thenReturn(true);
+    //         List<String> names = List.of("recordingA", "123recording");
+    //         Mockito.when(fs.listDirectoryChildren(Mockito.any())).thenReturn(names);
+
+    //         Mockito.when(webServer.getArchivedReportURL(Mockito.anyString()))
+    //                 .thenAnswer(
+    //                         new Answer<String>() {
+    //                             @Override
+    //                             public String answer(InvocationOnMock invocation) throws
+    // Throwable {
+    //                                 String name = invocation.getArgument(0);
+    //                                 return "/some/path/archive/" + name;
+    //                             }
+    //                         });
+    //         Mockito.when(webServer.getArchivedDownloadURL(Mockito.anyString()))
+    //                 .thenAnswer(
+    //                         new Answer<String>() {
+    //                             @Override
+    //                             public String answer(InvocationOnMock invocation) throws
+    // Throwable {
+    //                                 String name = invocation.getArgument(0);
+    //                                 return "/some/path/download/" + name;
+    //                             }
+    //                         });
+
+    //         handler.handleAuthenticated(ctx);
+
+    //         List<Map<String, String>> expected =
+    //                 List.of(
+    //                         Map.of(
+    //                                 "name", "recordingA",
+    //                                 "downloadUrl", "/some/path/download/recordingA",
+    //                                 "reportUrl", "/some/path/archive/recordingA"),
+    //                         Map.of(
+    //                                 "name", "123recording",
+    //                                 "downloadUrl", "/some/path/download/123recording",
+    //                                 "reportUrl", "/some/path/archive/123recording"));
+
+    //         ArgumentCaptor<String> responseCaptor = ArgumentCaptor.forClass(String.class);
+    //         Mockito.verify(resp).end(responseCaptor.capture());
+    //         String rawResult = responseCaptor.getValue();
+    //         List result = gson.fromJson(rawResult, List.class);
+    //         MatcherAssert.assertThat(result, Matchers.equalTo(expected));
+    //     }
 }

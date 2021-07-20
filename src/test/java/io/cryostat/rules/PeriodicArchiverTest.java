@@ -49,7 +49,6 @@ import io.cryostat.recordings.RecordingArchiveHelper;
 
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -104,7 +103,7 @@ class PeriodicArchiverTest {
         Mockito.when(recordingArchiveHelper.saveRecording(Mockito.any(), Mockito.anyString()))
                 .thenReturn("someRecording.jfr");
 
-        archiver.performArchival();
+        archiver.run();
 
         Mockito.verify(credentialsManager).getCredentials(serviceRef);
         Mockito.verify(recordingArchiveHelper).saveRecording(Mockito.any(), Mockito.anyString());
@@ -138,12 +137,17 @@ class PeriodicArchiverTest {
 
     @Test
     void testPruneArchive() throws Exception {
-        // get the archiver into a state where it is tracking a previously-archived recording
-        testPerformArchival();
+        // get the archiver into a state where it has reached its limit of preserved recordings
+        Mockito.when(recordingArchiveHelper.saveRecording(Mockito.any(), Mockito.anyString()))
+                .thenReturn("someRecording.jfr");
+        for (int i = 0; i < rule.getPreservedArchives(); i++) {
+            archiver.run();
+        }
+        
+        archiver.run();
 
-        boolean result = archiver.pruneArchive(rule.getRecordingName() + "_1").get();
-
-        Assertions.assertTrue(result);
-        Mockito.verify(recordingArchiveHelper).deleteRecording(Mockito.any(), Mockito.anyString());
+        Mockito.verify(credentialsManager, Mockito.times(3)).getCredentials(serviceRef);
+        Mockito.verify(recordingArchiveHelper, Mockito.times(3)).saveRecording(Mockito.any(), Mockito.anyString());
+        Mockito.verify(recordingArchiveHelper, Mockito.times(1)).deleteRecording(Mockito.any(), Mockito.anyString());
     }
 }

@@ -39,29 +39,44 @@ package io.cryostat.recordings;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.SocketException;
+import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.UnknownHostException;
 import java.nio.file.Path;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import javax.inject.Named;
+import javax.inject.Provider;
 
 import org.openjdk.jmc.rjmx.services.jfr.IRecordingDescriptor;
 
 import io.cryostat.MainModule;
+import io.cryostat.core.log.Logger;
 import io.cryostat.core.net.JFRConnection;
 import io.cryostat.core.sys.Clock;
 import io.cryostat.core.sys.FileSystem;
 import io.cryostat.net.ConnectionDescriptor;
 import io.cryostat.net.TargetConnectionManager;
 import io.cryostat.net.reports.ReportService;
+import io.cryostat.net.web.WebServer;
 import io.cryostat.platform.PlatformClient;
+import io.cryostat.rules.ArchivePathException;
+import io.cryostat.rules.ArchivedRecordingInfo;
 import io.cryostat.util.URIUtil;
+
+import org.apache.commons.codec.binary.Base32;
 
 public class RecordingArchiveHelper {
 
     private final TargetConnectionManager targetConnectionManager;
     private final FileSystem fs;
+    private final Provider<WebServer> webServerProvider;
+    private final Logger logger;
     private final Path recordingsPath;
     private final Clock clock;
     private final PlatformClient platformClient;
@@ -69,12 +84,16 @@ public class RecordingArchiveHelper {
 
     RecordingArchiveHelper(
             FileSystem fs,
+            Provider<WebServer> webServerProvider,
+            Logger logger,
             @Named(MainModule.RECORDINGS_PATH) Path recordingsPath,
             TargetConnectionManager targetConnectionManager,
             Clock clock,
             PlatformClient platformClient,
             ReportService reportService) {
         this.fs = fs;
+        this.webServerProvider = webServerProvider;
+        this.logger = logger;
         this.recordingsPath = recordingsPath;
         this.targetConnectionManager = targetConnectionManager;
         this.clock = clock;
@@ -121,8 +140,48 @@ public class RecordingArchiveHelper {
                 });
     }
 
+    public List<ArchivedRecordingInfo> getRecordings() throws Exception {
+        if (!fs.exists(recordingsPath)) {
+            throw new ArchivePathException(recordingsPath.toString(), "does not exist");
+        }
+        if (!fs.isReadable(recordingsPath)) {
+            throw new ArchivePathException(recordingsPath.toString(), "is not readable");
+        }
+        if (!fs.isDirectory(recordingsPath)) {
+            throw new ArchivePathException(recordingsPath.toString(), "is not a directory");
+        }
+        WebServer webServer = webServerProvider.get();
+        List<String> files = this.fs.listDirectoryChildren(recordingsPath);
+        return files.stream()
+                .map(
+                        file -> {
+                            String encodedServiceUri = Path.of(file).getParent().toString();
+                            String name = Path.of(file).getFileName().toString();
+                            try {
+                                return new ArchivedRecordingInfo(
+                                        encodedServiceUri,
+                                        name,
+                                        webServer.getArchivedReportURL(name),
+                                        webServer.getArchivedDownloadURL(name));
+                            } catch (SocketException
+                                    | UnknownHostException
+                                    | URISyntaxException e) {
+                                logger.warn(e);
+                                return null;
+                            }
+                        })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
     private String writeRecordingToDestination(
             JFRConnection connection, IRecordingDescriptor descriptor) throws Exception {
+        Base32 base32 = new Base32();
+
+        URI serviceUri = URIUtil.convert(connection.getJMXURL());
+        String encodedServiceUri = base32.encodeAsString(serviceUri.toString().getBytes());
+        Path specificRecordingsPath = recordingsPath.resolve(encodedServiceUri);
+
         String recordingName = descriptor.getName();
         if (recordingName.endsWith(".jfr")) {
             recordingName = recordingName.substring(0, recordingName.length() - 4);
@@ -134,16 +193,8 @@ public class RecordingArchiveHelper {
                 platformClient.listDiscoverableServices().stream()
                         .filter(
                                 serviceRef -> {
-                                    try {
-                                        return serviceRef
-                                                        .getServiceUri()
-                                                        .equals(
-                                                                URIUtil.convert(
-                                                                        connection.getJMXURL()))
-                                                && serviceRef.getAlias().isPresent();
-                                    } catch (URISyntaxException | IOException ioe) {
-                                        return false;
-                                    }
+                                    return serviceRef.getServiceUri().equals(serviceUri)
+                                            && serviceRef.getAlias().isPresent();
                                 })
                         .map(s -> s.getAlias().get())
                         .findFirst()
@@ -156,7 +207,7 @@ public class RecordingArchiveHelper {
         // TODO byte-sized rename limit is arbitrary. Probably plenty since recordings are also
         // differentiated by second-resolution timestamp
         byte count = 1;
-        while (fs.exists(recordingsPath.resolve(destination + ".jfr"))) {
+        while (fs.exists(specificRecordingsPath.resolve(destination + ".jfr"))) {
             destination =
                     String.format("%s_%s_%s.%d", targetName, recordingName, timestamp, count++);
             if (count == Byte.MAX_VALUE) {
@@ -166,7 +217,7 @@ public class RecordingArchiveHelper {
         }
         destination += ".jfr";
         try (InputStream stream = connection.getService().openStream(descriptor, false)) {
-            fs.copy(stream, recordingsPath.resolve(destination));
+            fs.copy(stream, specificRecordingsPath.resolve(destination));
         }
         return destination;
     }
