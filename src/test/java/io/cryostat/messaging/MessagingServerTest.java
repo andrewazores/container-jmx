@@ -142,6 +142,34 @@ class MessagingServerTest {
     }
 
     @Test
+    void shouldDropTooManyClients() throws Exception {
+        ServerWebSocket sws2 = Mockito.mock(ServerWebSocket.class);
+        ServerWebSocket sws3 = Mockito.mock(ServerWebSocket.class);
+        SocketAddress addr = Mockito.mock(SocketAddress.class);
+        when(addr.toString()).thenReturn("mockaddr");
+        when(sws2.remoteAddress()).thenReturn(addr);
+        when(sws2.path()).thenReturn("/api/v1/notifications");
+        when(sws3.remoteAddress()).thenReturn(addr);
+        when(sws3.path()).thenReturn("/api/v1/notifications");
+
+        server.start();
+
+        ArgumentCaptor<Handler> websocketHandlerCaptor = ArgumentCaptor.forClass(Handler.class);
+        Mockito.verify(httpServer).websocketHandler(websocketHandlerCaptor.capture());
+        websocketHandlerCaptor.getValue().handle(sws);
+        websocketHandlerCaptor.getValue().handle(sws2);
+        websocketHandlerCaptor.getValue().handle(sws3);
+
+        verify(sws).accept();
+        verify(sws2).accept();
+        verify(sws3, Mockito.never()).accept();
+
+        verify(sws, Mockito.never()).reject();
+        verify(sws2, Mockito.never()).reject();
+        verify(sws3).reject();
+    }
+
+    @Test
     void writeShouldDelegateToAllClients() throws Exception {
         ServerWebSocket sws2 = Mockito.mock(ServerWebSocket.class);
         SocketAddress addr = Mockito.mock(SocketAddress.class);
