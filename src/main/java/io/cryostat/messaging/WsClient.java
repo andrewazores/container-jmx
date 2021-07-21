@@ -37,56 +37,44 @@
  */
 package io.cryostat.messaging;
 
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-
 import io.cryostat.core.log.Logger;
+import io.cryostat.core.sys.Clock;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import io.vertx.core.Handler;
 import io.vertx.core.http.ServerWebSocket;
+import io.vertx.core.net.SocketAddress;
 import jdk.jfr.Category;
 import jdk.jfr.Event;
 import jdk.jfr.Label;
 import jdk.jfr.Name;
 
-class WsClient implements AutoCloseable, Handler<String> {
-
-    private final Logger logger;
-    private final BlockingQueue<String> inQ = new LinkedBlockingQueue<>();
+class WsClient implements AutoCloseable {
 
     private final ServerWebSocket sws;
-    private final Object threadLock = new Object();
-    private Thread readingThread;
+    private final long connectionTime;
+    private volatile boolean isAccepted;
+    private final Logger logger;
 
-    WsClient(Logger logger, ServerWebSocket sws) {
+    WsClient(Logger logger, ServerWebSocket sws, Clock clock) {
         this.logger = logger;
         this.sws = sws;
+        this.connectionTime = clock.getMonotonicTime();
     }
 
-    @Override
-    public void handle(String msg) {
-        logger.info("({}): CMD {}", this.sws.remoteAddress().toString(), msg);
-        inQ.add(msg);
+    void setAccepted() {
+        this.isAccepted = true;
     }
 
-    String readMessage() {
-        try {
-            synchronized (threadLock) {
-                readingThread = Thread.currentThread();
-            }
-            return inQ.take();
-        } catch (InterruptedException e) {
-            return null;
-        } finally {
-            synchronized (threadLock) {
-                readingThread = null;
-            }
-        }
+    boolean isAccepted() {
+        return isAccepted;
+    }
+
+    long getConnectionTime() {
+        return connectionTime;
     }
 
     void writeMessage(String message) {
-        if (!this.sws.isClosed()) {
+        if (isAccepted() && !this.sws.isClosed()) {
             WsMessageEmitted evt =
                     new WsMessageEmitted(
                             sws.remoteAddress().host(),
@@ -109,6 +97,10 @@ class WsClient implements AutoCloseable, Handler<String> {
                 }
             }
         }
+    }
+
+    SocketAddress getRemoteAddress() {
+        return sws.remoteAddress();
     }
 
     @Name("io.cryostat.messaging.WsClient.WsMessageEmitted")
@@ -139,11 +131,8 @@ class WsClient implements AutoCloseable, Handler<String> {
 
     @Override
     public void close() {
-        inQ.clear();
-        synchronized (threadLock) {
-            if (readingThread != null) {
-                readingThread.interrupt();
-            }
+        if (!sws.isClosed()) {
+            sws.close();
         }
     }
 }
