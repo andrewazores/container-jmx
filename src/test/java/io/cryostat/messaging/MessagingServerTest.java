@@ -142,6 +142,36 @@ class MessagingServerTest {
     }
 
     @Test
+    void shouldRejectClientOnWrongPath() throws Exception {
+        ServerWebSocket sws = Mockito.mock(ServerWebSocket.class);
+        when(sws.path()).thenReturn("/api/incorrect");
+
+        server.start();
+
+        ArgumentCaptor<Handler> websocketHandlerCaptor = ArgumentCaptor.forClass(Handler.class);
+        Mockito.verify(httpServer).websocketHandler(websocketHandlerCaptor.capture());
+        websocketHandlerCaptor.getValue().handle(sws);
+
+        verify(sws, Mockito.never()).accept();
+        verify(sws).reject(404);
+    }
+
+    @Test
+    void shouldRejectClientOnOldPathWithRedirectStatus() throws Exception {
+        ServerWebSocket sws = Mockito.mock(ServerWebSocket.class);
+        when(sws.path()).thenReturn("/api/v1/command");
+
+        server.start();
+
+        ArgumentCaptor<Handler> websocketHandlerCaptor = ArgumentCaptor.forClass(Handler.class);
+        Mockito.verify(httpServer).websocketHandler(websocketHandlerCaptor.capture());
+        websocketHandlerCaptor.getValue().handle(sws);
+
+        verify(sws, Mockito.never()).accept();
+        verify(sws).reject(410);
+    }
+
+    @Test
     void shouldDropTooManyClients() throws Exception {
         ServerWebSocket sws2 = Mockito.mock(ServerWebSocket.class);
         ServerWebSocket sws3 = Mockito.mock(ServerWebSocket.class);
