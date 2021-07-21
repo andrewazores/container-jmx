@@ -493,8 +493,8 @@ class RecordingArchiveHelperTest {
                             }
                         });
         Mockito.when(connection.getService()).thenReturn(service);
-        IRecordingDescriptor descriptor = createDescriptor("someRecording");
-        ConnectionDescriptor connectionDescriptor = new ConnectionDescriptor("fooTarget");
+        IRecordingDescriptor descriptor = createDescriptor(recordingName);
+        ConnectionDescriptor connectionDescriptor = new ConnectionDescriptor(targetId);
         Mockito.when(descriptor.getName()).thenReturn(recordingName);
         Mockito.when(service.getAvailableRecordings()).thenReturn(List.of(descriptor));
 
@@ -508,7 +508,7 @@ class RecordingArchiveHelperTest {
                                 arg ->
                                         arg.getTargetId()
                                                 .equals(connectionDescriptor.getTargetId())),
-                        Mockito.eq("someRecording"));
+                        Mockito.eq(recordingName));
     }
 
     @Test
@@ -526,7 +526,7 @@ class RecordingArchiveHelperTest {
                         });
 
         Mockito.when(connection.getService()).thenReturn(service);
-        ConnectionDescriptor connectionDescriptor = new ConnectionDescriptor("fooTarget");
+        ConnectionDescriptor connectionDescriptor = new ConnectionDescriptor(targetId);
         Mockito.when(service.getAvailableRecordings()).thenReturn(List.of());
 
         Assertions.assertThrows(

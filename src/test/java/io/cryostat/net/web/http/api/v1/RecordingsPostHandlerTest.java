@@ -59,6 +59,7 @@ import io.cryostat.net.web.http.RequestHandler;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
+import io.vertx.core.MultiMap;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpServerRequest;
@@ -133,6 +134,8 @@ class RecordingsPostHandlerTest {
                 .thenReturn(CompletableFuture.completedFuture(true));
         HttpServerRequest req = mock(HttpServerRequest.class);
         when(ctx.request()).thenReturn(req);
+        when(ctx.pathParam("targetId")).thenReturn("foo:9091");
+        when(req.headers()).thenReturn(MultiMap.caseInsensitiveMultiMap());
 
         when(cryoFs.isDirectory(recordingsPath)).thenReturn(true);
 
@@ -146,7 +149,9 @@ class RecordingsPostHandlerTest {
 
         Path filePath = mock(Path.class);
         when(filePath.toString()).thenReturn(savePath + filename);
-        when(recordingsPath.resolve(filename)).thenReturn(filePath);
+        Path specificRecordingsPath = mock(Path.class);
+        when(recordingsPath.resolve(Mockito.anyString())).thenReturn(specificRecordingsPath);
+        when(specificRecordingsPath.resolve(filename)).thenReturn(filePath);
 
         io.vertx.core.file.FileSystem vertxFs = mock(io.vertx.core.file.FileSystem.class);
         when(vertx.fileSystem()).thenReturn(vertxFs);
