@@ -171,6 +171,7 @@ abstract class AbstractV2RequestHandler<T> implements RequestHandler {
             response.setStatusMessage(intermediateResponse.getStatusMessage());
         }
         intermediateResponse.getHeaders().forEach(response::putHeader);
+        response.putHeader(HttpHeaders.CONTENT_TYPE, mimeType().mime());
 
         ApiMeta meta = new ApiMeta(mimeType(), response.getStatusMessage());
         ApiResultData<T> data = new ApiResultData<>(intermediateResponse.getBody());

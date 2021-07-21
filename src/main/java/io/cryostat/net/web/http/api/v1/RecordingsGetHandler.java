@@ -56,9 +56,11 @@ import io.cryostat.core.sys.FileSystem;
 import io.cryostat.net.AuthManager;
 import io.cryostat.net.web.WebServer;
 import io.cryostat.net.web.http.AbstractAuthenticatedRequestHandler;
+import io.cryostat.net.web.http.HttpMimeType;
 import io.cryostat.net.web.http.api.ApiVersion;
 
 import com.google.gson.Gson;
+import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.impl.HttpStatusException;
@@ -150,6 +152,7 @@ class RecordingsGetHandler extends AbstractAuthenticatedRequestHandler {
                                 })
                         .filter(Objects::nonNull)
                         .collect(Collectors.toList());
+        ctx.response().putHeader(HttpHeaders.CONTENT_TYPE, HttpMimeType.JSON.mime());
         ctx.response().end(gson.toJson(result));
     }
 }

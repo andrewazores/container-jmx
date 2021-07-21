@@ -53,6 +53,7 @@ import io.cryostat.recordings.RecordingOptionsBuilderFactory;
 
 import com.google.gson.Gson;
 import io.vertx.core.MultiMap;
+import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
@@ -153,6 +154,10 @@ class TargetRecordingOptionsGetHandlerTest {
         Mockito.when(req.headers()).thenReturn(MultiMap.caseInsensitiveMultiMap());
         HttpServerResponse resp = Mockito.mock(HttpServerResponse.class);
         Mockito.when(ctx.response()).thenReturn(resp);
+        Mockito.when(
+                        resp.putHeader(
+                                Mockito.any(CharSequence.class), Mockito.any(CharSequence.class)))
+                .thenReturn(resp);
         IFlightRecorderService service = Mockito.mock(IFlightRecorderService.class);
         Mockito.when(jfrConnection.getService()).thenReturn(service);
 
@@ -164,5 +169,6 @@ class TargetRecordingOptionsGetHandlerTest {
         MatcherAssert.assertThat(
                 responseCaptor.getValue(),
                 Matchers.equalTo("{\"maxAge\":50,\"toDisk\":true,\"maxSize\":32}"));
+        Mockito.verify(resp).putHeader(HttpHeaders.CONTENT_TYPE, "application/json");
     }
 }

@@ -171,6 +171,10 @@ class TargetRecordingsPostHandlerTest {
         attrs.add("maxAge", "50");
         attrs.add("maxSize", "64");
         Mockito.when(ctx.response()).thenReturn(resp);
+        Mockito.when(
+                        resp.putHeader(
+                                Mockito.any(CharSequence.class), Mockito.any(CharSequence.class)))
+                .thenReturn(resp);
 
         IRecordingDescriptor descriptor = createDescriptor("someRecording");
         Mockito.when(
@@ -256,6 +260,11 @@ class TargetRecordingsPostHandlerTest {
         Mockito.when(ctx.request()).thenReturn(req);
         Mockito.when(req.headers()).thenReturn(MultiMap.caseInsensitiveMultiMap());
         Mockito.when(req.formAttributes()).thenReturn(attrs);
+        Mockito.when(ctx.response()).thenReturn(resp);
+        Mockito.when(
+                        resp.putHeader(
+                                Mockito.any(CharSequence.class), Mockito.any(CharSequence.class)))
+                .thenReturn(resp);
         attrs.add("recordingName", "someRecording");
         attrs.add("events", "template=Foo");
 
@@ -313,6 +322,11 @@ class TargetRecordingsPostHandlerTest {
         Mockito.when(ctx.pathParam("targetId")).thenReturn("fooHost:9091");
         MultiMap attrs = MultiMap.caseInsensitiveMultiMap();
         Mockito.when(ctx.request()).thenReturn(req);
+        Mockito.when(ctx.response()).thenReturn(resp);
+        Mockito.when(
+                        resp.putHeader(
+                                Mockito.any(CharSequence.class), Mockito.any(CharSequence.class)))
+                .thenReturn(resp);
         Mockito.when(req.headers()).thenReturn(MultiMap.caseInsensitiveMultiMap());
         attrs.addAll(requestValues);
         attrs.add("recordingName", "someRecording");

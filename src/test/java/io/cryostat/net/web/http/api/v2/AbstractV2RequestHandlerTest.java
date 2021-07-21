@@ -57,6 +57,7 @@ import io.cryostat.net.web.http.api.ApiVersion;
 
 import com.google.gson.Gson;
 import io.vertx.core.MultiMap;
+import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
@@ -211,6 +212,16 @@ class AbstractV2RequestHandlerTest {
             handler = new ConnectionDescriptorHandler(auth, gson);
             when(auth.validateHttpHeader(Mockito.any()))
                     .thenReturn(CompletableFuture.completedFuture(true));
+        }
+
+        @Test
+        void shouldIncludeContentTypeHeader() {
+            String targetId = "fooTarget";
+            Mockito.when(ctx.pathParams()).thenReturn(Map.of("targetId", targetId));
+
+            handler.handle(ctx);
+
+            Mockito.verify(resp).putHeader(HttpHeaders.CONTENT_TYPE, handler.mimeType().mime());
         }
 
         @Test

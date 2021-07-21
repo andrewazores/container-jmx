@@ -41,10 +41,12 @@ import javax.inject.Inject;
 
 import io.cryostat.net.AuthManager;
 import io.cryostat.net.web.http.AbstractAuthenticatedRequestHandler;
+import io.cryostat.net.web.http.HttpMimeType;
 import io.cryostat.net.web.http.api.ApiVersion;
 import io.cryostat.platform.PlatformClient;
 
 import com.google.gson.Gson;
+import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.ext.web.RoutingContext;
 
@@ -82,6 +84,7 @@ class TargetsGetHandler extends AbstractAuthenticatedRequestHandler {
 
     @Override
     public void handleAuthenticated(RoutingContext ctx) throws Exception {
+        ctx.response().putHeader(HttpHeaders.CONTENT_TYPE, HttpMimeType.JSON.mime());
         ctx.response().end(gson.toJson(this.platformClient.listDiscoverableServices()));
     }
 }
