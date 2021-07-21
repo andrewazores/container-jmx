@@ -37,6 +37,9 @@
  */
 package io.cryostat.rules;
 
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
+
 public class ArchivedRecordingInfo {
     private final String encodedServiceUri;
     private final String name;
@@ -65,5 +68,35 @@ public class ArchivedRecordingInfo {
 
     public String getDownloadUrl() {
         return this.downloadUrl;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (other == null) {
+            return false;
+        }
+        if (other == this) {
+            return true;
+        }
+        if (!(other instanceof ArchivedRecordingInfo)) {
+            return false;
+        }
+        ArchivedRecordingInfo ari = (ArchivedRecordingInfo) other;
+        return new EqualsBuilder()
+                .append(encodedServiceUri, ari.encodedServiceUri)
+                .append(name, ari.name)
+                .append(reportUrl, ari.reportUrl)
+                .append(downloadUrl, ari.downloadUrl)
+                .isEquals();
+    }
+
+    @Override
+    public int hashCode() {
+        return new HashCodeBuilder()
+                .append(encodedServiceUri)
+                .append(name)
+                .append(reportUrl)
+                .append(downloadUrl)
+                .hashCode();
     }
 }

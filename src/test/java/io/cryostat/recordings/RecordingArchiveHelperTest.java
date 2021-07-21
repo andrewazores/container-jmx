@@ -37,6 +37,7 @@
  */
 package io.cryostat.recordings;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -86,7 +87,7 @@ class RecordingArchiveHelperTest {
     RecordingArchiveHelper recordingArchiveHelper;
     @Mock TargetConnectionManager targetConnectionManager;
     @Mock FileSystem fs;
-    @Mock Provider<WebServer> webServerProvider;
+    @Mock WebServer webServer;
     @Mock Logger logger;
     @Mock Path recordingsPath;
     @Mock Clock clock;
@@ -104,7 +105,7 @@ class RecordingArchiveHelperTest {
         this.recordingArchiveHelper =
                 new RecordingArchiveHelper(
                         fs,
-                        webServerProvider,
+                        () -> webServer,
                         logger,
                         recordingsPath,
                         targetConnectionManager,
@@ -133,16 +134,17 @@ class RecordingArchiveHelperTest {
         Mockito.when(service.getAvailableRecordings()).thenReturn(List.of());
         
         Assertions.assertThrows(
-                ExecutionException.class,
-                () -> {
-                        try {
-                                recordingArchiveHelper.saveRecording(
-                                        new ConnectionDescriptor(targetId), recordingName).get();
-                        } catch (ExecutionException ee) {
-                                Assertions.assertTrue(ee.getCause() instanceof RecordingNotFoundException);
-                                throw ee;
-                        }
-                });
+            ExecutionException.class,
+            () -> {
+                try {
+                    recordingArchiveHelper
+                        .saveRecording(new ConnectionDescriptor(targetId), recordingName)
+                        .get();
+                } catch (ExecutionException ee) {
+                    Assertions.assertTrue(ee.getCause() instanceof RecordingNotFoundException);
+                    throw ee;
+                }
+            });
     }
 
     @Test
@@ -191,14 +193,17 @@ class RecordingArchiveHelperTest {
         Mockito.when(connection.getJMXURL())
                 .thenReturn(
                         (new JMXServiceURL("service:jmx:rmi:///jndi/rmi://cryostat:9092/jmxrmi")));
-
+        
+        
         Instant now = Instant.now();
         Mockito.when(clock.now()).thenReturn(now);
         Mockito.when(fs.exists(Mockito.any())).thenReturn(false);
         InputStream stream = Mockito.mock(InputStream.class);
         Mockito.when(service.openStream(descriptor, false)).thenReturn(stream);
+        Path specificRecordingsPath = Mockito.mock(Path.class);
+        Mockito.when(recordingsPath.resolve(Mockito.anyString())).thenReturn(specificRecordingsPath);
         Path destination = Mockito.mock(Path.class);
-        Mockito.when(recordingsPath.resolve(Mockito.anyString())).thenReturn(destination);
+        Mockito.when(specificRecordingsPath.resolve(Mockito.anyString())).thenReturn(destination);
 
         String saveName =
                 recordingArchiveHelper.saveRecording(
@@ -262,8 +267,10 @@ class RecordingArchiveHelperTest {
         Mockito.when(fs.exists(Mockito.any())).thenReturn(false);
         InputStream stream = Mockito.mock(InputStream.class);
         Mockito.when(service.openStream(descriptor, false)).thenReturn(stream);
+        Path specificRecordingsPath = Mockito.mock(Path.class);
+        Mockito.when(recordingsPath.resolve(Mockito.anyString())).thenReturn(specificRecordingsPath);
         Path destination = Mockito.mock(Path.class);
-        Mockito.when(recordingsPath.resolve(Mockito.anyString())).thenReturn(destination);
+        Mockito.when(specificRecordingsPath.resolve(Mockito.anyString())).thenReturn(destination);
 
         String saveName =
                 recordingArchiveHelper.saveRecording(
@@ -322,8 +329,10 @@ class RecordingArchiveHelperTest {
         Mockito.when(fs.exists(Mockito.any())).thenReturn(false);
         InputStream stream = Mockito.mock(InputStream.class);
         Mockito.when(service.openStream(descriptor, false)).thenReturn(stream);
+        Path specificRecordingsPath = Mockito.mock(Path.class);
+        Mockito.when(recordingsPath.resolve(Mockito.anyString())).thenReturn(specificRecordingsPath);
         Path destination = Mockito.mock(Path.class);
-        Mockito.when(recordingsPath.resolve(Mockito.anyString())).thenReturn(destination);
+        Mockito.when(specificRecordingsPath.resolve(Mockito.anyString())).thenReturn(destination);
 
         String saveName =
                 recordingArchiveHelper.saveRecording(
@@ -388,8 +397,10 @@ class RecordingArchiveHelperTest {
         Mockito.when(fs.exists(Mockito.any())).thenReturn(false);
         InputStream stream = Mockito.mock(InputStream.class);
         Mockito.when(service.openStream(descriptor, false)).thenReturn(stream);
+        Path specificRecordingsPath = Mockito.mock(Path.class);
+        Mockito.when(recordingsPath.resolve(Mockito.anyString())).thenReturn(specificRecordingsPath);
         Path destination = Mockito.mock(Path.class);
-        Mockito.when(recordingsPath.resolve(Mockito.anyString())).thenReturn(destination);
+        Mockito.when(specificRecordingsPath.resolve(Mockito.anyString())).thenReturn(destination);
 
         String saveName =
                 recordingArchiveHelper.saveRecording(
@@ -452,8 +463,10 @@ class RecordingArchiveHelperTest {
         Mockito.when(fs.exists(Mockito.any())).thenReturn(true).thenReturn(false);
         InputStream stream = Mockito.mock(InputStream.class);
         Mockito.when(service.openStream(descriptor, false)).thenReturn(stream);
+        Path specificRecordingsPath = Mockito.mock(Path.class);
+        Mockito.when(recordingsPath.resolve(Mockito.anyString())).thenReturn(specificRecordingsPath);
         Path destination = Mockito.mock(Path.class);
-        Mockito.when(recordingsPath.resolve(Mockito.anyString())).thenReturn(destination);
+        Mockito.when(specificRecordingsPath.resolve(Mockito.anyString())).thenReturn(destination);
 
         String saveName =
                 recordingArchiveHelper.saveRecording(
@@ -485,7 +498,7 @@ class RecordingArchiveHelperTest {
         Mockito.when(descriptor.getName()).thenReturn(recordingName);
         Mockito.when(service.getAvailableRecordings()).thenReturn(List.of(descriptor));
 
-        recordingArchiveHelper.deleteRecording(connectionDescriptor, recordingName).get();
+        recordingArchiveHelper.deleteRecording(connectionDescriptor, recordingName);
 
         Mockito.verify(service).close(descriptor);
 
@@ -517,8 +530,70 @@ class RecordingArchiveHelperTest {
         Mockito.when(service.getAvailableRecordings()).thenReturn(List.of());
 
         Assertions.assertThrows(
-                RecordingNotFoundException.class,
-                () -> recordingArchiveHelper.deleteRecording(connectionDescriptor, recordingName));
+            ExecutionException.class,
+            () -> {
+                try {
+                    recordingArchiveHelper
+                        .deleteRecording(connectionDescriptor, recordingName)
+                        .get();
+                } catch (ExecutionException ee) {
+                    Assertions.assertTrue(ee.getCause() instanceof RecordingNotFoundException);
+                    throw ee;
+                }
+            });
+    }
+
+    @Test
+    void shouldGetRecordings() throws Exception {
+        Mockito.when(fs.exists(Mockito.any())).thenReturn(true);
+        Mockito.when(fs.isReadable(Mockito.any())).thenReturn(true);
+        Mockito.when(fs.isDirectory(Mockito.any())).thenReturn(true);
+        List<String> names = List.of("encodedServiceUriA/recordingA", "encodedServiceUri123/123recording");
+        Mockito.when(fs.listDirectoryChildren(Mockito.any())).thenReturn(names);
+
+        Mockito.when(webServer.getArchivedReportURL(Mockito.anyString()))
+                .thenAnswer(
+                        new Answer<String>() {
+                        @Override
+                        public String answer(InvocationOnMock invocation) throws Throwable {
+                                String name = invocation.getArgument(0);
+                                return "/some/path/archive/" + name;
+                        }
+                        });
+        Mockito.when(webServer.getArchivedDownloadURL(Mockito.anyString()))
+                .thenAnswer(
+                        new Answer<String>() {
+                        @Override
+                        public String answer(InvocationOnMock invocation) throws Throwable {
+                                String name = invocation.getArgument(0);
+                                return "/some/path/download/" + name;
+                        }
+                        });
+
+        List<ArchivedRecordingInfo> result = recordingArchiveHelper.getRecordings().get();
+        List<ArchivedRecordingInfo> expected =
+                List.of(
+                        new ArchivedRecordingInfo(
+                                                    "encodedServiceUriA",
+                                                    "recordingA",
+                                                    "/some/path/archive/recordingA",
+                                                    "/some/path/download/recordingA"),
+                        new ArchivedRecordingInfo(
+                                                    "encodedServiceUri123",
+                                                    "123recording",
+                                                    "/some/path/archive/123recording",
+                                                    "/some/path/download/123recording"));
+        MatcherAssert.assertThat(result, Matchers.equalTo(expected));
+    }
+
+    @Test
+    void getRecordingsShouldHandleIOException() throws IOException {
+        Mockito.when(fs.exists(Mockito.any())).thenReturn(true);
+        Mockito.when(fs.isReadable(Mockito.any())).thenReturn(true);
+        Mockito.when(fs.isDirectory(Mockito.any())).thenReturn(true);
+        Mockito.when(fs.listDirectoryChildren(Mockito.any())).thenThrow(IOException.class);
+
+        Assertions.assertThrows(IOException.class, () -> recordingArchiveHelper.getRecordings());
     }
 
     private static IRecordingDescriptor createDescriptor(String name)
@@ -539,68 +614,5 @@ class RecordingArchiveHelperTest {
         return descriptor;
     }
 
-    //     @Test
-    //     void shouldRespondWithInternalErrorIfExceptionThrown() throws IOException {
-    //         RoutingContext ctx = Mockito.mock(RoutingContext.class);
-
-    //         Mockito.when(fs.exists(Mockito.any())).thenReturn(true);
-    //         Mockito.when(fs.isReadable(Mockito.any())).thenReturn(true);
-    //         Mockito.when(fs.isDirectory(Mockito.any())).thenReturn(true);
-    //         Mockito.when(fs.listDirectoryChildren(Mockito.any())).thenThrow(IOException.class);
-
-    //         Assertions.assertThrows(IOException.class, () -> handler.handleAuthenticated(ctx));
-    //     }
-
-    //     @Test
-    //     void shouldRespondWithListOfRecordings() throws Exception {
-    //         RoutingContext ctx = Mockito.mock(RoutingContext.class);
-    //         HttpServerResponse resp = Mockito.mock(HttpServerResponse.class);
-    //         Mockito.when(ctx.response()).thenReturn(resp);
-
-    //         Mockito.when(fs.exists(Mockito.any())).thenReturn(true);
-    //         Mockito.when(fs.isReadable(Mockito.any())).thenReturn(true);
-    //         Mockito.when(fs.isDirectory(Mockito.any())).thenReturn(true);
-    //         List<String> names = List.of("recordingA", "123recording");
-    //         Mockito.when(fs.listDirectoryChildren(Mockito.any())).thenReturn(names);
-
-    //         Mockito.when(webServer.getArchivedReportURL(Mockito.anyString()))
-    //                 .thenAnswer(
-    //                         new Answer<String>() {
-    //                             @Override
-    //                             public String answer(InvocationOnMock invocation) throws
-    // Throwable {
-    //                                 String name = invocation.getArgument(0);
-    //                                 return "/some/path/archive/" + name;
-    //                             }
-    //                         });
-    //         Mockito.when(webServer.getArchivedDownloadURL(Mockito.anyString()))
-    //                 .thenAnswer(
-    //                         new Answer<String>() {
-    //                             @Override
-    //                             public String answer(InvocationOnMock invocation) throws
-    // Throwable {
-    //                                 String name = invocation.getArgument(0);
-    //                                 return "/some/path/download/" + name;
-    //                             }
-    //                         });
-
-    //         handler.handleAuthenticated(ctx);
-
-    //         List<Map<String, String>> expected =
-    //                 List.of(
-    //                         Map.of(
-    //                                 "name", "recordingA",
-    //                                 "downloadUrl", "/some/path/download/recordingA",
-    //                                 "reportUrl", "/some/path/archive/recordingA"),
-    //                         Map.of(
-    //                                 "name", "123recording",
-    //                                 "downloadUrl", "/some/path/download/123recording",
-    //                                 "reportUrl", "/some/path/archive/123recording"));
-
-    //         ArgumentCaptor<String> responseCaptor = ArgumentCaptor.forClass(String.class);
-    //         Mockito.verify(resp).end(responseCaptor.capture());
-    //         String rawResult = responseCaptor.getValue();
-    //         List result = gson.fromJson(rawResult, List.class);
-    //         MatcherAssert.assertThat(result, Matchers.equalTo(expected));
-    //     }
+        
 }

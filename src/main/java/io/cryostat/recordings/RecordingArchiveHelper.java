@@ -242,7 +242,7 @@ public class RecordingArchiveHelper {
                     String.format("%s_%s_%s.%d", targetName, recordingName, timestamp, count++);
             if (count == Byte.MAX_VALUE) {
                 throw new IOException(
-                        "Recording could not be savedFile already exists and rename attempts were exhausted.");
+                        "Recording could not be saved; file already exists and rename attempts were exhausted.");
             }
         }
         destination += ".jfr";
