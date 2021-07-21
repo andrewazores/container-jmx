@@ -45,9 +45,11 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ScheduledExecutorService;
 
 import io.cryostat.MainModule;
 import io.cryostat.core.log.Logger;
+import io.cryostat.core.sys.Clock;
 import io.cryostat.core.sys.Environment;
 import io.cryostat.messaging.notifications.Notification;
 import io.cryostat.messaging.notifications.NotificationFactory;
@@ -78,6 +80,8 @@ class MessagingServerTest {
     @Mock AuthManager authManager;
     Gson gson = MainModule.provideGson(logger);
     @Mock ServerWebSocket sws;
+    @Mock ScheduledExecutorService limboPruner;
+    @Mock Clock clock;
     @Mock NotificationFactory notificationFactory;
     @Mock Notification notification;
     @Mock Notification.Builder notificationBuilder;
@@ -112,7 +116,15 @@ class MessagingServerTest {
 
         server =
                 new MessagingServer(
-                        httpServer, env, authManager, notificationFactory, 2, logger, gson);
+                        httpServer,
+                        env,
+                        authManager,
+                        notificationFactory,
+                        2,
+                        limboPruner,
+                        clock,
+                        logger,
+                        gson);
     }
 
     @Test

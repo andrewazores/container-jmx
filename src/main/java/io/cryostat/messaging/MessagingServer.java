@@ -43,11 +43,15 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import javax.inject.Named;
 
 import io.cryostat.core.log.Logger;
+import io.cryostat.core.sys.Clock;
 import io.cryostat.core.sys.Environment;
 import io.cryostat.messaging.notifications.NotificationFactory;
 import io.cryostat.net.AuthManager;
@@ -58,13 +62,17 @@ import com.google.gson.Gson;
 
 public class MessagingServer implements AutoCloseable {
 
-    private final Set<WsClient> connections = new HashSet<>();
+    private final Set<WsClient> connections;
     private final HttpServer server;
     private final AuthManager authManager;
     private final NotificationFactory notificationFactory;
+    private final ScheduledExecutorService limboPruner;
+    private final Clock clock;
     private final int maxConnections;
     private final Logger logger;
     private final Gson gson;
+
+    private Future<?> prunerTask;
 
     MessagingServer(
             HttpServer server,
@@ -72,18 +80,42 @@ public class MessagingServer implements AutoCloseable {
             AuthManager authManager,
             NotificationFactory notificationFactory,
             @Named(MessagingModule.WS_MAX_CONNECTIONS) int maxConnections,
+            @Named(MessagingModule.LIMBO_PRUNER) ScheduledExecutorService limboPruner,
+            Clock clock,
             Logger logger,
             Gson gson) {
+        this.connections = new HashSet<>();
         this.server = server;
         this.authManager = authManager;
         this.notificationFactory = notificationFactory;
         this.maxConnections = maxConnections;
+        this.limboPruner = limboPruner;
+        this.clock = clock;
         this.logger = logger;
         this.gson = gson;
     }
 
     public void start() throws SocketException, UnknownHostException {
         logger.info("Max concurrent WebSocket connections: {}", maxConnections);
+
+        prunerTask =
+                this.limboPruner.scheduleAtFixedRate(
+                        () -> {
+                            long now = clock.getMonotonicTime();
+                            synchronized (connections) {
+                                for (WsClient wsc : connections) {
+                                    long expiry =
+                                            wsc.getConnectionTime() + TimeUnit.SECONDS.toNanos(10);
+                                    boolean isOld = now > expiry;
+                                    if (isOld && !wsc.isAccepted()) {
+                                        removeConnection(wsc);
+                                    }
+                                }
+                            }
+                        },
+                        0,
+                        1,
+                        TimeUnit.SECONDS);
 
         server.websocketHandler(
                 (sws) -> {
@@ -107,13 +139,8 @@ public class MessagingServer implements AutoCloseable {
                     }
                     logger.info("Connected remote client {}", remoteAddress);
 
-                    WsClient crw = new WsClient(this.logger, sws);
-                    sws.closeHandler(
-                            (unused) -> {
-                                logger.info("Disconnected remote client {}", remoteAddress);
-                                sendClientActivityNotification(remoteAddress, "disconnected");
-                                removeConnection(crw);
-                            });
+                    WsClient wsc = new WsClient(this.logger, sws, clock);
+                    sws.closeHandler((unused) -> removeConnection(wsc));
                     sws.textMessageHandler(
                             msg -> {
                                 try {
@@ -127,8 +154,9 @@ public class MessagingServer implements AutoCloseable {
                                                                 "Authenticated remote client {}",
                                                                 remoteAddress);
                                                         sws.textMessageHandler(null);
-                                                        crw.setAccepted();
-                                                        sendClientActivityNotification(remoteAddress, "accepted");
+                                                        wsc.setAccepted();
+                                                        sendClientActivityNotification(
+                                                                remoteAddress, "accepted");
                                                     })
                                             // 1002: WebSocket "Protocol Error" close reason
                                             .onFailure(
@@ -154,7 +182,7 @@ public class MessagingServer implements AutoCloseable {
                                                     "Internal error: \"%s\"", e.getMessage()));
                                 }
                             });
-                    addConnection(crw);
+                    addConnection(wsc);
                     sws.accept();
                     sendClientActivityNotification(remoteAddress, "connected");
                 });
@@ -170,22 +198,27 @@ public class MessagingServer implements AutoCloseable {
 
     @Override
     public void close() {
+        if (prunerTask != null) {
+            prunerTask.cancel(false);
+        }
         synchronized (connections) {
             connections.forEach(this::removeConnection);
             connections.clear();
         }
     }
 
-    private void addConnection(WsClient crw) {
+    private void addConnection(WsClient wsc) {
         synchronized (connections) {
-            connections.add(crw);
+            connections.add(wsc);
         }
     }
 
-    private void removeConnection(WsClient crw) {
+    private void removeConnection(WsClient wsc) {
         synchronized (connections) {
-            if (connections.remove(crw)) {
-                crw.close();
+            if (connections.remove(wsc)) {
+                wsc.close();
+                logger.info("Disconnected remote client {}", wsc.getRemoteAddress());
+                sendClientActivityNotification(wsc.getRemoteAddress().toString(), "disconnected");
             }
         }
     }

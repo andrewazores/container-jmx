@@ -38,9 +38,11 @@
 package io.cryostat.messaging;
 
 import io.cryostat.core.log.Logger;
+import io.cryostat.core.sys.Clock;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.vertx.core.http.ServerWebSocket;
+import io.vertx.core.net.SocketAddress;
 import jdk.jfr.Category;
 import jdk.jfr.Event;
 import jdk.jfr.Label;
@@ -49,24 +51,30 @@ import jdk.jfr.Name;
 class WsClient implements AutoCloseable {
 
     private final ServerWebSocket sws;
-    private volatile boolean accepted;
+    private final long connectionTime;
+    private volatile boolean isAccepted;
     private final Logger logger;
 
-    WsClient(Logger logger, ServerWebSocket sws) {
+    WsClient(Logger logger, ServerWebSocket sws, Clock clock) {
         this.logger = logger;
         this.sws = sws;
+        this.connectionTime = clock.getMonotonicTime();
     }
 
     void setAccepted() {
-        this.accepted = true;
+        this.isAccepted = true;
     }
 
     boolean isAccepted() {
-        return accepted;
+        return isAccepted;
+    }
+
+    long getConnectionTime() {
+        return connectionTime;
     }
 
     void writeMessage(String message) {
-        if (accepted && !this.sws.isClosed()) {
+        if (isAccepted() && !this.sws.isClosed()) {
             WsMessageEmitted evt =
                     new WsMessageEmitted(
                             sws.remoteAddress().host(),
@@ -89,6 +97,10 @@ class WsClient implements AutoCloseable {
                 }
             }
         }
+    }
+
+    SocketAddress getRemoteAddress() {
+        return sws.remoteAddress();
     }
 
     @Name("io.cryostat.messaging.WsClient.WsMessageEmitted")

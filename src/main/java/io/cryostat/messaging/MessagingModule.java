@@ -37,10 +37,14 @@
  */
 package io.cryostat.messaging;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+
 import javax.inject.Named;
 import javax.inject.Singleton;
 
 import io.cryostat.core.log.Logger;
+import io.cryostat.core.sys.Clock;
 import io.cryostat.core.sys.Environment;
 import io.cryostat.messaging.notifications.NotificationFactory;
 import io.cryostat.messaging.notifications.NotificationsModule;
@@ -57,8 +61,8 @@ import dagger.Provides;
         })
 public abstract class MessagingModule {
 
-    static final String WS_WORKER_POOL = "WS_WORKER_POOL";
     static final String WS_MAX_CONNECTIONS = "WS_MAX_CONNECTIONS";
+    static final String LIMBO_PRUNER = "LIMBO_PRUNER";
 
     static final String MAX_CONNECTIONS_ENV_VAR = "CRYOSTAT_MAX_WS_CONNECTIONS";
     static final int MIN_CONNECTIONS = 1;
@@ -73,10 +77,20 @@ public abstract class MessagingModule {
             AuthManager authManager,
             NotificationFactory notificationFactory,
             @Named(WS_MAX_CONNECTIONS) int maxConnections,
+            @Named(LIMBO_PRUNER) ScheduledExecutorService limboPruner,
+            Clock clock,
             Logger logger,
             Gson gson) {
         return new MessagingServer(
-                server, env, authManager, notificationFactory, maxConnections, logger, gson);
+                server,
+                env,
+                authManager,
+                notificationFactory,
+                maxConnections,
+                limboPruner,
+                clock,
+                logger,
+                gson);
     }
 
     @Provides
@@ -101,5 +115,11 @@ public abstract class MessagingModule {
             logger.warn(nfe);
             return DEFAULT_MAX_CONNECTIONS;
         }
+    }
+
+    @Provides
+    @Named(LIMBO_PRUNER)
+    static ScheduledExecutorService provideLimboPruner() {
+        return Executors.newSingleThreadScheduledExecutor();
     }
 }
