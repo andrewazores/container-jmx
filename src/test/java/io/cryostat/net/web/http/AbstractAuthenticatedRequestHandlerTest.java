@@ -50,6 +50,7 @@ import io.cryostat.net.ConnectionDescriptor;
 import io.cryostat.net.web.http.api.ApiVersion;
 
 import io.vertx.core.MultiMap;
+import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
@@ -88,6 +89,14 @@ class AbstractAuthenticatedRequestHandlerTest {
         Mockito.lenient()
                 .when(resp.putHeader(Mockito.anyString(), Mockito.anyString()))
                 .thenReturn(resp);
+    }
+
+    @Test
+    void shouldPutDefaultContentTypeHeader() {
+        when(auth.validateHttpHeader(Mockito.any()))
+                .thenReturn(CompletableFuture.completedFuture(true));
+        handler.handle(ctx);
+        Mockito.verify(resp).putHeader(HttpHeaders.CONTENT_TYPE, "text/plain");
     }
 
     @Test
