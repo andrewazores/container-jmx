@@ -37,56 +37,36 @@
  */
 package io.cryostat.messaging;
 
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-
 import io.cryostat.core.log.Logger;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import io.vertx.core.Handler;
 import io.vertx.core.http.ServerWebSocket;
 import jdk.jfr.Category;
 import jdk.jfr.Event;
 import jdk.jfr.Label;
 import jdk.jfr.Name;
 
-class WsClient implements AutoCloseable, Handler<String> {
-
-    private final Logger logger;
-    private final BlockingQueue<String> inQ = new LinkedBlockingQueue<>();
+class WsClient implements AutoCloseable {
 
     private final ServerWebSocket sws;
-    private final Object threadLock = new Object();
-    private Thread readingThread;
+    private volatile boolean accepted;
+    private final Logger logger;
 
     WsClient(Logger logger, ServerWebSocket sws) {
         this.logger = logger;
         this.sws = sws;
     }
 
-    @Override
-    public void handle(String msg) {
-        logger.info("({}): CMD {}", this.sws.remoteAddress().toString(), msg);
-        inQ.add(msg);
+    void setAccepted() {
+        this.accepted = true;
     }
 
-    String readMessage() {
-        try {
-            synchronized (threadLock) {
-                readingThread = Thread.currentThread();
-            }
-            return inQ.take();
-        } catch (InterruptedException e) {
-            return null;
-        } finally {
-            synchronized (threadLock) {
-                readingThread = null;
-            }
-        }
+    boolean isAccepted() {
+        return accepted;
     }
 
     void writeMessage(String message) {
-        if (!this.sws.isClosed()) {
+        if (accepted && !this.sws.isClosed()) {
             WsMessageEmitted evt =
                     new WsMessageEmitted(
                             sws.remoteAddress().host(),
@@ -139,11 +119,8 @@ class WsClient implements AutoCloseable, Handler<String> {
 
     @Override
     public void close() {
-        inQ.clear();
-        synchronized (threadLock) {
-            if (readingThread != null) {
-                readingThread.interrupt();
-            }
+        if (!sws.isClosed()) {
+            sws.close();
         }
     }
 }

@@ -39,14 +39,10 @@ package io.cryostat.messaging;
 
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
-import java.util.concurrent.BlockingQueue;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import javax.inject.Named;
@@ -62,13 +58,11 @@ import com.google.gson.Gson;
 
 public class MessagingServer implements AutoCloseable {
 
-    private final BlockingQueue<String> inQ = new LinkedBlockingQueue<>();
-    private final Map<WsClient, ScheduledFuture<?>> connections = new HashMap<>();
+    private final Set<WsClient> connections = new HashSet<>();
     private final HttpServer server;
     private final AuthManager authManager;
     private final NotificationFactory notificationFactory;
     private final int maxConnections;
-    private final ScheduledExecutorService workerPool;
     private final Logger logger;
     private final Gson gson;
 
@@ -78,14 +72,12 @@ public class MessagingServer implements AutoCloseable {
             AuthManager authManager,
             NotificationFactory notificationFactory,
             @Named(MessagingModule.WS_MAX_CONNECTIONS) int maxConnections,
-            @Named(MessagingModule.WS_WORKER_POOL) ScheduledExecutorService workerPool,
             Logger logger,
             Gson gson) {
         this.server = server;
         this.authManager = authManager;
         this.notificationFactory = notificationFactory;
         this.maxConnections = maxConnections;
-        this.workerPool = workerPool;
         this.logger = logger;
         this.gson = gson;
     }
@@ -112,107 +104,89 @@ public class MessagingServer implements AutoCloseable {
                             sendClientActivityNotification(remoteAddress, "dropped");
                             return;
                         }
-                        logger.info("Connected remote client {}", remoteAddress);
-
-                        WsClient crw = new WsClient(this.logger, sws);
-                        sws.closeHandler(
-                                (unused) -> {
-                                    logger.info("Disconnected remote client {}", remoteAddress);
-                                    sendClientActivityNotification(remoteAddress, "disconnected");
-                                    removeConnection(crw);
-                                });
-                        sws.textMessageHandler(
-                                msg -> {
-                                    try {
-                                        String proto = sws.subProtocol();
-                                        authManager
-                                                .doAuthenticated(
-                                                        () -> proto,
-                                                        authManager::validateWebSocketSubProtocol)
-                                                .onSuccess(() -> crw.handle(msg))
-                                                // 1002: WebSocket "Protocol Error" close reason
-                                                .onFailure(
-                                                        () ->
-                                                                sws.close(
-                                                                        (short) 1002,
-                                                                        String.format(
-                                                                                "Invalid subprotocol \"%s\"",
-                                                                                proto)))
-                                                .execute();
-                                    } catch (InterruptedException
-                                            | ExecutionException
-                                            | TimeoutException e) {
-                                        logger.info(e);
-                                        // 1011: WebSocket "Internal Error" close reason
-                                        sws.close(
-                                                (short) 1011,
-                                                String.format(
-                                                        "Internal error: \"%s\"", e.getMessage()));
-                                    }
-                                });
-                        // FIXME connection should only be added after client sends a message to
-                        // authenticate itself
-                        addConnection(crw);
-                        sendClientActivityNotification(remoteAddress, "connected");
-                        sws.accept();
                     }
-                });
-    }
+                    logger.info("Connected remote client {}", remoteAddress);
 
-    public String readMessage() {
-        try {
-            return inQ.take();
-        } catch (InterruptedException e) {
-            logger.warn(e);
-            return null;
-        }
+                    WsClient crw = new WsClient(this.logger, sws);
+                    sws.closeHandler(
+                            (unused) -> {
+                                logger.info("Disconnected remote client {}", remoteAddress);
+                                sendClientActivityNotification(remoteAddress, "disconnected");
+                                removeConnection(crw);
+                            });
+                    sws.textMessageHandler(
+                            msg -> {
+                                try {
+                                    authManager
+                                            .doAuthenticated(
+                                                    sws::subProtocol,
+                                                    authManager::validateWebSocketSubProtocol)
+                                            .onSuccess(
+                                                    () -> {
+                                                        logger.info(
+                                                                "Authenticated remote client {}",
+                                                                remoteAddress);
+                                                        sws.textMessageHandler(null);
+                                                        crw.setAccepted();
+                                                        sendClientActivityNotification(remoteAddress, "accepted");
+                                                    })
+                                            // 1002: WebSocket "Protocol Error" close reason
+                                            .onFailure(
+                                                    () -> {
+                                                        logger.info(
+                                                                "Disconnected remote client {} due to authentication failure",
+                                                                remoteAddress);
+                                                        sendClientActivityNotification(
+                                                                remoteAddress, "auth failure");
+                                                        sws.close(
+                                                                (short) 1002,
+                                                                "Invalid auth subprotocol");
+                                                    })
+                                            .execute();
+                                } catch (InterruptedException
+                                        | ExecutionException
+                                        | TimeoutException e) {
+                                    logger.info(e);
+                                    // 1011: WebSocket "Internal Error" close reason
+                                    sws.close(
+                                            (short) 1011,
+                                            String.format(
+                                                    "Internal error: \"%s\"", e.getMessage()));
+                                }
+                            });
+                    addConnection(crw);
+                    sws.accept();
+                    sendClientActivityNotification(remoteAddress, "connected");
+                });
     }
 
     public void writeMessage(WsMessage message) {
         String json = gson.toJson(message);
         logger.info("Outgoing WS message: {}", json);
         synchronized (connections) {
-            connections.keySet().forEach(c -> c.writeMessage(json));
-        }
-    }
-
-    void addConnection(WsClient crw) {
-        synchronized (connections) {
-            ScheduledFuture<?> task =
-                    workerPool.scheduleWithFixedDelay(
-                            () -> {
-                                String msg = crw.readMessage();
-                                if (msg != null) {
-                                    inQ.add(msg);
-                                }
-                            },
-                            0,
-                            10,
-                            TimeUnit.MILLISECONDS);
-            connections.put(crw, task);
-        }
-    }
-
-    void removeConnection(WsClient crw) {
-        synchronized (connections) {
-            ScheduledFuture<?> task = connections.remove(crw);
-            if (task != null) {
-                task.cancel(false);
-                crw.close();
-            }
+            connections.forEach(c -> c.writeMessage(json));
         }
     }
 
     @Override
     public void close() {
-        closeConnections();
+        synchronized (connections) {
+            connections.forEach(this::removeConnection);
+            connections.clear();
+        }
     }
 
-    private void closeConnections() {
+    private void addConnection(WsClient crw) {
         synchronized (connections) {
-            workerPool.shutdown();
-            connections.keySet().forEach(WsClient::close);
-            connections.clear();
+            connections.add(crw);
+        }
+    }
+
+    private void removeConnection(WsClient crw) {
+        synchronized (connections) {
+            if (connections.remove(crw)) {
+                crw.close();
+            }
         }
     }
 

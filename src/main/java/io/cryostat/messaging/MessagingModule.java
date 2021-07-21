@@ -37,9 +37,6 @@
  */
 package io.cryostat.messaging;
 
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-
 import javax.inject.Named;
 import javax.inject.Singleton;
 
@@ -77,24 +74,9 @@ public abstract class MessagingModule {
             NotificationFactory notificationFactory,
             @Named(WS_MAX_CONNECTIONS) int maxConnections,
             Logger logger,
-            Gson gson,
-            @Named(WS_WORKER_POOL) ScheduledExecutorService workerPool) {
+            Gson gson) {
         return new MessagingServer(
-                server,
-                env,
-                authManager,
-                notificationFactory,
-                maxConnections,
-                workerPool,
-                logger,
-                gson);
-    }
-
-    @Provides
-    @Named(WS_WORKER_POOL)
-    static ScheduledExecutorService provideWorkerPool(
-            @Named(WS_MAX_CONNECTIONS) int maxConnections) {
-        return Executors.newScheduledThreadPool(maxConnections);
+                server, env, authManager, notificationFactory, maxConnections, logger, gson);
     }
 
     @Provides
